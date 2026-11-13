@@ -3,3 +3,4 @@ __pycache__/
 data/
 workspace/notes/*.md
 workspace/outbox/*.md
+!CLAUDE.md
