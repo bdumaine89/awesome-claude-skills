@@ -28,14 +28,21 @@ python run.py                       # then flip the Mock/Live toggle in the head
 
 ## What's in it
 
+- **Art:** free LPC pixel art (buildings, trees, props, autotiled roads and
+  water). The villagers are composited from the LPC character generator and
+  have full 4-direction walk cycles. Credits are in
+  [`static/assets/CREDITS.md`](static/assets/CREDITS.md). The art is
+  CC-BY-SA 3.0 / GPL 3.0, licensed separately from the code.
+- **Camera:** scroll to zoom, drag to pan, double-click to fit. **Follow**
+  tracks the selected villager.
 - **Map:** four places, each tied to a workflow.
   - Town Hall (centre): planning and delegation.
   - Library (north-west): research notes.
   - Post Office (north-east): summaries.
   - Town Square (south): idle time and chat.
-  - The scenery has roads, a fountain, a pond, lamp posts, bunting, chimney
-    smoke, drifting leaves, and a day/night cycle with lit windows and
-    fireflies.
+  - The scenery has a fountain with spray, a pond, lamp posts, chimney
+    smoke, butterflies, drifting leaves and cloud shadows.
+  - A day/night cycle adds lamp light, lit windows and fireflies.
 - **Agents:** each has a sprite, a schedule, an inventory, a memory log and
   a current thought.
   - States are Idle, Walking, Working and Chatting.

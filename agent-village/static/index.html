@@ -13,7 +13,7 @@
     <span class="logo" aria-hidden="true"></span>
     <div>
       <h1>Agent Village</h1>
-      <p class="sub">Three AI villagers. Real files. Cozy vibes.</p>
+      <p class="sub">Three AI villagers · real files · <a href="/static/assets/CREDITS.md" target="_blank" rel="noopener">art credits</a></p>
     </div>
   </div>
 
@@ -42,6 +42,12 @@
       <canvas id="village" aria-label="Top-down village map. Click a villager to inspect them."></canvas>
       <div id="tooltip" class="tooltip" hidden></div>
       <div id="conn" class="conn" hidden>Reconnecting…</div>
+      <div class="cam" role="group" aria-label="Camera">
+        <button id="zoomIn" title="Zoom in (or scroll)">＋</button>
+        <button id="zoomOut" title="Zoom out">－</button>
+        <button id="zoomFit" title="Show the whole village (double-click map)">⤢</button>
+        <button id="follow" title="Follow the selected villager">👁 Follow</button>
+      </div>
     </div>
     <div id="cards" class="cards"></div>
   </section>
@@ -83,8 +89,7 @@
   <article id="fileBody" class="md"></article>
 </dialog>
 
-<script src="/static/js/art.js"></script>
-<script src="/static/js/game.js"></script>
+<script src="/static/js/render.js"></script>
 <script src="/static/js/ui.js"></script>
 </body>
 </html>

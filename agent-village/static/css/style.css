@@ -75,9 +75,16 @@ button, input, textarea { font: inherit; color: inherit; }
 @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; } .controls { margin-left: 0; } }
 .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .frame { position: relative; border: 3px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 5px 0 var(--line); background: #8cc56a; }
-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+canvas { display: block; width: 100%; height: auto; }
+.frame canvas { touch-action: none; }
 .tooltip { position: absolute; z-index: 3; pointer-events: none; max-width: 240px; font-size: 12.5px;
   background: var(--panel); border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; box-shadow: 0 3px 0 var(--line); }
+.cam { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; z-index: 2; }
+.cam button { border: 2px solid var(--line); background: rgba(251,245,233,.92); color: #3b2c20; border-radius: 6px; padding: 4px 9px;
+  font-weight: 700; cursor: pointer; box-shadow: 0 2px 0 var(--line); }
+.cam button.on { background: var(--accent); color: #fff; }
+.sub a { color: inherit; }
+@media (max-width: 640px) { .cam { right: 6px; bottom: 6px; gap: 4px; } .cam button { padding: 1px 6px; font-size: 11px; } }
 .conn { position: absolute; top: 10px; right: 10px; background: #c0504d; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
 
 /* --------------------------------------------------------------- cards */
@@ -86,7 +93,7 @@ canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; 
 .card { display: grid; grid-template-columns: 52px 1fr; gap: 4px 10px; align-items: center; cursor: pointer; text-align: left;
   background: var(--panel); border: 3px solid var(--line); border-radius: 8px; padding: 10px; box-shadow: 0 4px 0 var(--line); }
 .card.sel { outline: 3px solid var(--accent); outline-offset: 2px; }
-.card canvas { width: 52px; height: 52px; background: var(--panel2); border: 2px solid var(--line); border-radius: 6px; grid-row: span 2; }
+.card canvas { width: 52px; height: 52px; image-rendering: pixelated; background: var(--panel2); border: 2px solid var(--line); border-radius: 6px; grid-row: span 2; }
 .card .nm { font-family: var(--mono); font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .card .th { font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.9em; }
 .card .bar { grid-column: 1 / -1; height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }

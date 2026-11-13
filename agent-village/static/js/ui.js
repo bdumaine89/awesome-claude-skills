@@ -20,7 +20,7 @@
   // ---------------------------------------------------------------- boot
   async function boot() {
     const map = await api("/api/map");
-    Game.init(map, $("village"));
+    await Game.init(map, $("village"));
     Game.onSelect = (id) => { selectVillager(id); setTab("inspect"); };
     Game.select(selected);
     examples();
@@ -70,7 +70,7 @@
     if (!el.children.length) {
       el.innerHTML = state.villagers.map((v) => `
         <button class="card" data-id="${v.id}">
-          <canvas width="48" height="48"></canvas>
+          <canvas width="96" height="96"></canvas>
           <div class="nm">${esc(v.title)} <span class="pill"></span></div>
           <div class="th"></div>
           <div class="bar"><i></i></div>
@@ -100,7 +100,7 @@
     if (tab !== "inspect") return;
     const scrolled = el.scrollTop;
     el.innerHTML = `
-      <div class="insp-head"><canvas width="72" height="72"></canvas>
+      <div class="insp-head"><canvas width="144" height="144"></canvas>
         <div><h3>${esc(d.title)} <span class="pill ${d.state}">${esc(d.state)}</span></h3><p>${esc(d.bio)}</p></div></div>
       <div class="box"><h4>💭 Current thought</h4><div class="thought">“${esc(d.work ? d.work.label + "…" : d.thought)}”</div>
         ${d.bubble ? `<div class="hint">Saying: “${esc(d.bubble)}”</div>` : ""}</div>
@@ -216,6 +216,10 @@
       const b = e.target.closest("button"); if (!b || b.disabled) return;
       try { await api("/api/control", { action: "mode", value: b.dataset.mode }); } catch (err) { alert(err.message); }
     };
+    $("zoomIn").onclick = () => Game.zoom(1.3);
+    $("zoomOut").onclick = () => Game.zoom(1 / 1.3);
+    $("zoomFit").onclick = () => { Game.fit(); $("follow").classList.remove("on"); };
+    $("follow").onclick = () => { const on = !Game.following; Game.follow(on); $("follow").classList.toggle("on", on); };
     $("resetBtn").onclick = () => { if (confirm("Reset the village? This clears tasks, memories, chats and generated files.")) api("/api/control", { action: "reset" }); };
     $("goalForm").onsubmit = async (e) => {
       e.preventDefault();

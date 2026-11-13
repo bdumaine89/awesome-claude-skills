@@ -1,42 +1,49 @@
-"""The village map: a tile grid built in code, plus A* pathfinding.
+"""The village map: a 40x26 grid of 32px tiles, placed props, and A* pathfinding.
 
-Tile codes (sent to the client, which draws them):
-  g grass   p dirt path   c cobblestone   w water   B building   f fountain
-  t tree    x fence       h hedge         l lamp post   n bench   o flowers
-Blocking tiles: w B f t x h l n
+Ground codes (client draws them with LPC autotiles):
+  g grass   p dirt path   c cobblestone square   w water
+Anything a building or solid prop sits on is marked blocked separately.
 """
 from __future__ import annotations
 
 import heapq
-import random
 
-W, H = 48, 30
-BLOCKING = set("wBftxhln")
-COST = {"p": 1.0, "c": 1.0, "g": 2.6, "o": 2.6}
+W, H, TILE = 40, 26, 32
+COST = {"p": 1.0, "c": 1.0, "g": 2.4}
 
-# Buildings / zones. `door` is the tile a villager stands on to "be at" the place.
+# Buildings: sprite drawn at pixel (px, py); `block` = tile rect (x, y, w, h); `door` = tile to stand on.
 LOCATIONS = {
     "library": {
-        "name": "The Library", "x": 3, "y": 3, "w": 10, "h": 7, "door": (8, 10),
-        "wall": "#6d8fb8", "roof": "#2f4a6e", "trim": "#e8dcc0", "icon": "book",
+        "name": "The Library", "sprite": "library", "px": 32, "py": 32,
+        "block": (1, 1, 12, 6), "door": (4, 7),
+        "glow": [(47, 72), (48, 140), (112, 140)],
         "blurb": "Scout Leo researches topics here and writes notes to workspace/notes/.",
     },
     "post_office": {
-        "name": "Post Office", "x": 35, "y": 3, "w": 10, "h": 7, "door": (39, 10),
-        "wall": "#d9a441", "roof": "#8c4f2b", "trim": "#fff2d6", "icon": "letter",
+        "name": "Post Office", "sprite": "post_office", "px": 832, "py": 96,
+        "block": (26, 3, 13, 4), "door": (31, 7),
+        "glow": [(80, 80), (148, 82), (192, 82)],
         "blurb": "Scribe Maya turns notes into clean summaries in workspace/outbox/.",
     },
     "town_hall": {
-        "name": "Town Hall", "x": 18, "y": 12, "w": 12, "h": 7, "door": (23, 19),
-        "wall": "#c7765b", "roof": "#6b2f2a", "trim": "#f3e3c8", "icon": "flag",
+        "name": "Town Hall", "sprite": "town_hall", "px": 494, "py": 367,
+        "block": (15, 11, 11, 6), "door": (20, 17),
+        "glow": [(22, 140), (52, 140), (86, 140), (130, 140), (195, 140), (240, 140), (272, 140), (305, 140)],
         "blurb": "Mayor Ada reads the task board, plans goals and delegates subtasks.",
     },
     "town_square": {
-        "name": "Town Square", "x": 15, "y": 21, "w": 18, "h": 8, "door": (23, 22),
-        "zone": True, "icon": "fountain",
+        "name": "Town Square", "zone": True, "rect": (13, 18, 15, 7), "door": (17, 21),
         "blurb": "Idle villagers wander, rest and chat here.",
     },
 }
+
+# Props: sprite anchored so its bottom-centre sits on the bottom-centre of `tile`.
+# dx/dy nudge in pixels; `block` marks the tile solid; `flat` props never cover villagers.
+PROPS: list[dict] = []
+
+
+def prop(sprite, x, y, block=True, dx=0, dy=0, flat=False):
+    PROPS.append({"sprite": sprite, "tile": [x, y], "block": block, "dx": dx, "dy": dy, "flat": flat})
 
 
 def _rect(grid, x, y, w, h, code):
@@ -46,65 +53,103 @@ def _rect(grid, x, y, w, h, code):
                 grid[yy][xx] = code
 
 
-def build_grid() -> list[list[str]]:
-    rng = random.Random(7)
+def build() -> tuple[list[list[str]], list[list[bool]]]:
     g = [["g"] * W for _ in range(H)]
-
     # roads
-    _rect(g, 2, 10, 44, 2, "p")            # main east-west road
-    _rect(g, 8, 12, 2, 13, "p")            # west lane down to the square
-    _rect(g, 38, 12, 2, 13, "p")           # east lane down to the square
-    _rect(g, 8, 24, 8, 2, "p")             # west lane into square
-    _rect(g, 32, 24, 8, 2, "p")            # east lane into square
-    _rect(g, 23, 19, 2, 2, "p")            # town hall steps
-    # square (cobblestone) and fountain
-    sq = LOCATIONS["town_square"]
-    _rect(g, sq["x"], sq["y"], sq["w"], sq["h"], "c")
-    _rect(g, 22, 24, 4, 3, "f")
-    # buildings
+    _rect(g, 1, 8, 38, 2, "p")              # main east-west road
+    _rect(g, 4, 7, 1, 1, "p")               # library step
+    _rect(g, 31, 7, 1, 1, "p")              # post office step
+    _rect(g, 4, 10, 2, 12, "p")             # west lane
+    _rect(g, 31, 10, 2, 12, "p")            # east lane
+    _rect(g, 4, 20, 9, 2, "p")              # west lane into square
+    _rect(g, 28, 20, 5, 2, "p")             # east lane into square
+    _rect(g, 20, 17, 1, 1, "p")             # town hall step
+    sq = LOCATIONS["town_square"]["rect"]
+    _rect(g, *sq, "c")
+    _rect(g, 34, 16, 5, 5, "w")             # pond
+    _rect(g, 35, 21, 3, 1, "w")
+
+    PROPS.clear()
+    # square furniture
+    prop("fountain", 20, 21)
+    for (x, y) in [(13, 18), (27, 18), (13, 24), (27, 24)]:
+        prop("lamp", x, y)
+    prop("bench", 15, 22, dx=16)
+    prop("bench", 24, 22, dx=16)
+    prop("statue", 17, 18)
+    prop("statue", 23, 18)
+    # lamps along the main road
+    for x in (8, 15, 26, 34):
+        prop("lamp", x, 7)
+    # garden west of town hall
+    for x in range(7, 13):
+        prop("fence_l" if x == 7 else "fence_r" if x == 12 else "fence_m", x, 16)
+    for i, (x, y) in enumerate([(7, 12), (9, 13), (11, 12), (8, 14), (10, 15), (12, 14), (7, 15), (11, 11), (9, 11)]):
+        prop(f"flower{i % 17}", x, y, block=False, flat=True)
+    prop("bush", 9, 18, dx=16)
+    # yards
+    prop("barrels", 37, 7)
+    prop("barrel", 27, 7)
+    prop("plant_pot", 3, 7)
+    prop("plant_pot", 5, 7)
+    prop("urn", 19, 17)
+    prop("urn", 21, 17)
+    # north meadow between the library and post office
+    prop("oak", 15, 4, dx=8)
+    prop("autumn", 18, 2)
+    prop("pine", 23, 3)
+    prop("tree_small", 20, 6)
+    prop("oak", 25, 6)
+    prop("rocks", 17, 6, block=False)
+    for i, (x, y) in enumerate([(14, 6), (21, 2), (16, 1), (24, 5), (19, 4), (22, 6)]):
+        prop(f"flower{(i * 5) % 17}", x, y, block=False, flat=True)
+    # border trees
+    for x in range(0, W, 3):
+        if 10 <= x <= 30:
+            continue  # keep the view of the square clear; low hedges instead
+        prop("pine" if x % 2 else "oak", x, 25, dx=(x % 5) - 2)
+    for x in range(12, 30, 3):
+        prop("bush", x, 25, dx=16)
+    for y in range(3, 24, 3):
+        prop("pine", 0, y)
+        prop("pine" if y % 2 else "oak", 39, y)
+    for (x, y, s) in [(2, 12, "oak"), (2, 17, "tree_small"), (8, 23, "autumn"), (31, 23, "oak"), (35, 13, "tree_small"),
+                      (12, 10, "tree_small"), (28, 14, "pine"), (13, 14, "oak"), (36, 23, "pine"), (25, 11, "bush")]:
+        if g[y][x] == "g":
+            prop(s, x, y)
+    prop("stump", 33, 12, block=False)
+    for i, (x, y) in enumerate([(7, 22), (11, 23), (29, 23), (33, 14), (37, 12), (3, 22), (15, 10), (26, 10)]):
+        if g[y][x] == "g":
+            prop(f"flower{(i * 3) % 17}", x, y, block=False, flat=True)
+
+    blocked = [[g[y][x] == "w" for x in range(W)] for y in range(H)]
     for loc in LOCATIONS.values():
-        if not loc.get("zone"):
-            _rect(g, loc["x"], loc["y"], loc["w"], loc["h"], "B")
-    # pond (south-east) and garden hedges
-    _rect(g, 41, 21, 5, 4, "w")
-    _rect(g, 42, 25, 3, 1, "w")
-    for x in range(2, 8):                  # little fenced garden by the library lane
-        g[16][x] = "x"
-    for y in range(13, 16):
-        g[y][2] = "x"
-    # flowers and benches
-    for (x, y) in [(3, 13), (4, 14), (5, 13), (6, 14), (4, 15), (11, 13), (12, 14), (14, 18), (34, 18), (35, 17),
-                   (36, 13), (44, 13), (43, 14), (28, 7), (19, 7), (20, 8)]:
-        g[y][x] = "o"
-    for (x, y) in [(17, 23), (30, 23), (17, 27), (30, 27)]:
-        g[y][x] = "n"
-    # lamp posts along the roads and square
-    for (x, y) in [(13, 9), (16, 9), (31, 9), (34, 9), (15, 21), (32, 21), (15, 28), (32, 28), (10, 18), (37, 18)]:
-        g[y][x] = "l"
-    # trees: border ring plus clusters, never on roads/buildings/doors
-    doors = {loc["door"] for loc in LOCATIONS.values()}
-    candidates = [(x, 0) for x in range(W)] + [(x, H - 1) for x in range(W)] + \
-                 [(0, y) for y in range(H)] + [(W - 1, y) for y in range(H)]
-    candidates += [(1, 1), (14, 2), (16, 4), (32, 2), (30, 5), (2, 15), (3, 19), (5, 22), (12, 20),
-                   (13, 27), (2, 26), (35, 21), (35, 27), (45, 18), (46, 9), (14, 13), (33, 14),
-                   (27, 2), (21, 3), (24, 5), (11, 27), (45, 27), (36, 26)]
-    for (x, y) in candidates:
-        if g[y][x] in "go" and (x, y) not in doors and (rng.random() < 0.8 or y in (0, H - 1)):
-            g[y][x] = "t"
-    return g
+        if "block" in loc:
+            bx, by, bw, bh = loc["block"]
+            for yy in range(by, by + bh):
+                for xx in range(bx, bx + bw):
+                    blocked[yy][xx] = True
+    for p in PROPS:
+        if p["block"]:
+            x, y = p["tile"]
+            blocked[y][x] = True
+            if p["sprite"] in ("bench", "fountain", "barrels", "bush"):
+                blocked[y][x - 1] = True
+            if p["sprite"] == "fountain":
+                blocked[y - 1][x] = blocked[y - 1][x - 1] = True
+    for loc in LOCATIONS.values():
+        dx, dy = loc["door"]
+        blocked[dy][dx] = False
+    return g, blocked
 
 
-GRID = build_grid()
-SQUARE_TILES = [
-    (x, y)
-    for y in range(LOCATIONS["town_square"]["y"], LOCATIONS["town_square"]["y"] + LOCATIONS["town_square"]["h"])
-    for x in range(LOCATIONS["town_square"]["x"], LOCATIONS["town_square"]["x"] + LOCATIONS["town_square"]["w"])
-    if GRID[y][x] == "c"
-]
+GRID, BLOCKED = build()
+_sx, _sy, _sw, _sh = LOCATIONS["town_square"]["rect"]
+SQUARE_TILES = [(x, y) for y in range(_sy, _sy + _sh) for x in range(_sx, _sx + _sw) if not BLOCKED[y][x]]
 
 
 def walkable(x: int, y: int) -> bool:
-    return 0 <= x < W and 0 <= y < H and GRID[y][x] not in BLOCKING
+    return 0 <= x < W and 0 <= y < H and not BLOCKED[y][x]
 
 
 def door(loc_id: str) -> tuple[int, int]:
@@ -130,7 +175,7 @@ def astar(start: tuple[int, int], goal: tuple[int, int]) -> list[tuple[int, int]
         for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
             if not walkable(nx, ny):
                 continue
-            nc = cost + COST.get(GRID[ny][nx], 2.6)
+            nc = cost + COST.get(GRID[ny][nx], 2.4)
             if nc < best.get((nx, ny), 1e9):
                 best[(nx, ny)] = nc
                 came[(nx, ny)] = cur
@@ -146,7 +191,10 @@ def astar(start: tuple[int, int], goal: tuple[int, int]) -> list[tuple[int, int]
 
 def map_payload() -> dict:
     return {
-        "w": W, "h": H, "tile": 16,
+        "w": W, "h": H, "tile": TILE,
         "grid": ["".join(row) for row in GRID],
-        "locations": {k: {**v, "door": list(v["door"])} for k, v in LOCATIONS.items()},
+        "blocked": ["".join("#" if b else "." for b in row) for row in BLOCKED],
+        "locations": {k: {kk: (list(vv) if isinstance(vv, tuple) else vv) for kk, vv in v.items()}
+                      for k, v in LOCATIONS.items()},
+        "props": PROPS,
     }
