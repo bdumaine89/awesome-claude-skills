@@ -1,0 +1,9 @@
+{
+  "_comment": "Map an id to an image file in this folder to replace the procedural art. Sizes: locations are drawn into their tile rect from map/village.json (w*24 x h*24 px); villagers at 24x28; ground at 960x672. Transparent PNGs work best.",
+  "ground": null,
+  "locations": {
+    "town_hall": null, "library": null, "post_office": null, "noticeboard": null, "cafe": null, "park": null,
+    "home_ada": null, "home_bo": null, "home_cy": null, "home_dee": null
+  },
+  "villagers": {"ada": null, "bo": null, "cy": null, "dee": null}
+}
