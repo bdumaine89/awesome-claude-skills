@@ -1,11 +1,15 @@
 # 🏡 Agent Village
 
-A cozy, local, top-down pixel village where three AI agents do real work.
+A cozy, local 3D village where three AI agents do real work.
 You post a goal at Town Hall. Mayor Ada plans it, Scout Leo researches it at
 the Library, and Scribe Maya writes it up at the Post Office. Each step
 produces real markdown files in `workspace/`.
 
 ![Agent Village](docs/screenshot.png)
+
+| Follow cam | Night |
+|---|---|
+| ![Close-up](docs/closeup.png) | ![Night](docs/night.png) |
 
 ## Launch
 
@@ -28,25 +32,25 @@ python run.py                       # then flip the Mock/Live toggle in the head
 
 ## What's in it
 
-- **Art:** free LPC pixel art (buildings, trees, props, autotiled roads and
-  water). The villagers are composited from the LPC character generator and
-  have full 4-direction walk cycles. Credits are in
-  [`static/assets/CREDITS.md`](static/assets/CREDITS.md). The art is
-  CC-BY-SA 3.0 / GPL 3.0, licensed separately from the code.
-- **Camera:** scroll to zoom, drag to pan, double-click to fit. **Follow**
-  tracks the selected villager.
+- **Art:** a 3D hex-tile diorama built from free **CC0** KayKit models by
+  Kay Lousberg, with animated characters (walk, work, cheer, rest).
+  Credits are in [`static/models/CREDITS.md`](static/models/CREDITS.md).
+  It's rendered with Three.js, vendored in the repo, so it needs no internet.
+- **Camera:** drag to orbit, right-drag to pan, scroll to zoom,
+  double-click to reset. **Follow** tracks the selected villager.
 - **Map:** four places, each tied to a workflow.
   - Town Hall (centre): planning and delegation.
   - Library (north-west): research notes.
   - Post Office (north-east): summaries.
   - Town Square (south): idle time and chat.
-  - The scenery has a fountain with spray, a pond, lamp posts, chimney
-    smoke, butterflies, drifting leaves and cloud shadows.
-  - A day/night cycle adds lamp light, lit windows and fireflies.
-- **Agents:** each has a sprite, a schedule, an inventory, a memory log and
+  - The scenery includes a cobbled plaza with a well, lanterns, a pond with
+    lilies, forests, mountains, a windmill and drifting clouds.
+  - A day/night cycle adds glowing lanterns, warm lights at each workplace
+    and fireflies.
+- **Agents:** each has an animated 3D body, a schedule, an inventory, a memory log and
   a current thought.
   - States are Idle, Walking, Working and Chatting.
-  - They walk roads with A* pathfinding.
+  - They walk the roads with A* pathfinding over the hexes.
   - While working, they show a progress badge.
   - When two idle villagers meet, they chat in speech bubbles.
 - **Sidebar:**

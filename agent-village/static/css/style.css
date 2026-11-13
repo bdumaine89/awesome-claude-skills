@@ -85,6 +85,31 @@ canvas { display: block; width: 100%; height: auto; }
 .cam button.on { background: var(--accent); color: #fff; }
 .sub a { color: inherit; }
 @media (max-width: 640px) { .cam { right: 6px; bottom: 6px; gap: 4px; } .cam button { padding: 1px 6px; font-size: 11px; } }
+.frame { background: #9fd4f2; }
+.overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; font-family: var(--body); }
+.plaque { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; white-space: nowrap;
+  background: #f6ead0; color: #4a3523; font: 700 12.5px var(--body); padding: 3px 10px; border-radius: 7px;
+  border: 2px solid #6e4729; box-shadow: 0 3px 0 rgba(60,40,20,.45); }
+.plaque.hot { background: #fff6cf; }
+.vtag { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.vtag .bubble { position: absolute; bottom: 14px; left: 0; transform: translateX(-50%); width: max-content; max-width: 210px;
+  background: #fffdf6; color: #2b2622; border: 2px solid #3b2c20; border-radius: 12px; padding: 5px 10px;
+  font: 600 12.5px/1.3 var(--body); box-shadow: 0 3px 0 rgba(0,0,0,.18); animation: pop .18s ease-out; }
+.vtag .bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent;
+  border-top-color: #3b2c20; border-bottom: 0; }
+.vtag .badge { position: absolute; bottom: 14px; left: 0; transform: translateX(-50%); background: #fffdf6; border: 2px solid #3b2c20;
+  border-radius: 10px; padding: 2px 8px 5px; text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.18); animation: bob 1.6s ease-in-out infinite; }
+.vtag .badge span { font-size: 17px; display: block; }
+.vtag .badge i { display: block; width: 34px; height: 4px; background: #e3d6bd; border-radius: 2px; overflow: hidden; }
+.vtag .badge b { display: block; height: 100%; width: 0; background: #5aa45a; transition: width .3s; }
+.vtag .name { position: absolute; top: 46px; left: 0; transform: translateX(-50%); white-space: nowrap; background: rgba(30,20,10,.82); color: #fff;
+  font: 700 11.5px var(--body); padding: 2px 8px 2px 18px; border-radius: 99px; }
+.vtag .name::before { content: ""; position: absolute; left: 7px; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.overlay.paused::after { content: "PAUSED"; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(40,30,20,.85);
+  color: #fff3c4; font: 800 16px var(--body); padding: 6px 18px; border-radius: 10px; letter-spacing: .1em; }
+@keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+@keyframes bob { 50% { margin-bottom: 4px; } }
+[hidden] { display: none !important; }
 .conn { position: absolute; top: 10px; right: 10px; background: #c0504d; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
 
 /* --------------------------------------------------------------- cards */

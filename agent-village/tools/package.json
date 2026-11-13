@@ -1,0 +1,11 @@
+{
+  "name": "agent-village-tools",
+  "private": true,
+  "type": "module",
+  "description": "Asset build scripts. Only needed to rebuild static/models; the app itself needs no Node.",
+  "dependencies": {
+    "@gltf-transform/core": "4.1.1",
+    "@gltf-transform/functions": "4.1.1",
+    "three": "0.170.0"
+  }
+}

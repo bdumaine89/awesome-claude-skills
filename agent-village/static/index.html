@@ -13,7 +13,7 @@
     <span class="logo" aria-hidden="true"></span>
     <div>
       <h1>Agent Village</h1>
-      <p class="sub">Three AI villagers · real files · <a href="/static/assets/CREDITS.md" target="_blank" rel="noopener">art credits</a></p>
+      <p class="sub">Three AI villagers · real files · <a href="/static/models/CREDITS.md" target="_blank" rel="noopener">3D art: KayKit (CC0)</a></p>
     </div>
   </div>
 
@@ -39,13 +39,13 @@
 <main class="layout">
   <section class="stage">
     <div class="frame">
-      <canvas id="village" aria-label="Top-down village map. Click a villager to inspect them."></canvas>
+      <canvas id="village" aria-label="3D village. Drag to orbit, scroll to zoom, click a villager to inspect them."></canvas>
       <div id="tooltip" class="tooltip" hidden></div>
       <div id="conn" class="conn" hidden>Reconnecting…</div>
       <div class="cam" role="group" aria-label="Camera">
         <button id="zoomIn" title="Zoom in (or scroll)">＋</button>
         <button id="zoomOut" title="Zoom out">－</button>
-        <button id="zoomFit" title="Show the whole village (double-click map)">⤢</button>
+        <button id="zoomFit" title="Reset the view (double-click map)">⤢</button>
         <button id="follow" title="Follow the selected villager">👁 Follow</button>
       </div>
     </div>
@@ -89,7 +89,15 @@
   <article id="fileBody" class="md"></article>
 </dialog>
 
-<script src="/static/js/render.js"></script>
-<script src="/static/js/ui.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "/static/vendor/three/build/three.module.min.js",
+    "three/addons/": "/static/vendor/three/examples/jsm/"
+} }
+</script>
+<script type="module">
+  import "/static/js/village3d.js";
+  import "/static/js/ui.js";
+</script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 # Agent Village: guide for Claude (and humans)
 
-A local 2D village where three AI agents coordinate real work. FastAPI + SQLite
-on the back end, a single-page HTML5 Canvas front end, no external assets.
+A local 3D village where three AI agents coordinate real work. FastAPI + SQLite
+on the back end, a single-page Three.js (WebGL canvas) front end. All assets are
+vendored, so nothing loads from a CDN.
 
 ## Run
 
@@ -20,14 +21,16 @@ server. Without it, the Live toggle is disabled and the app runs in Mock mode.
 run.py               uvicorn launcher
 app/main.py          FastAPI routes + /ws WebSocket (10 Hz state push)
 app/sim.py           Simulation: movement loop, decision ticks, roles, chats
-app/world.py         40×26 map of 32px tiles: ground codes, buildings, props, A* (roads are cheaper)
+app/world.py         17×13 hex map (pointy-top, odd-r offset): roads, buildings, scenery, A* over hexes
 app/brain.py         MockBrain (offline) / LiveBrain (Claude API), same interface
 app/personas.py      Villager definitions (looks, workplace, schedule, starting inventory)
 app/db.py            SQLite: villagers, tasks, memories, chats, events, settings
-static/js/render.js  Canvas renderer: LPC autotiles, y-sorted sprites, camera (zoom/pan/follow),
-                     day/night lighting, particles, bubbles, input
-static/assets/       Built art: sprites.png/json atlas, terrain/, villagers/<id>.png, CREDITS.md
-tools/build_assets.py  Rebuilds static/assets from the free LPC sources (see "Art" below)
+static/js/village3d.js  Three.js renderer: hex tiles + auto-picked road pieces, buildings, plaza,
+                       lanterns, animated characters, orbit camera, day/night, HTML overlay for
+                       bubbles/labels, raycast picking. Sets window.Game for ui.js
+static/models/       KayKit glTF models (hex/) and trimmed character .glb files (chars/), CREDITS.md
+static/vendor/three/ Three.js r170 + the three addons we import (MIT)
+tools/build_models.mjs  Rebuilds static/models + static/vendor from the free sources (see "Art")
 static/js/ui.js      Sidebar: controls, inspector, task board, activity feed, files
 workspace/notes/     Leo's research notes (markdown)
 workspace/outbox/    Maya's summaries (markdown)
@@ -41,6 +44,9 @@ data/village.db      SQLite database (gitignored; delete it or press Reset to st
   pick up work, start chats, save state. Speed (1–16×) scales sim time, and
   with it both clocks.
 - Sim clock: 1 sim-second is 1 village minute, starting Day 1 at 08:00.
+- Positions: the server moves villagers in "cartesian" hex units
+  (`world.center` / `world.nearest`). The client multiplies by 2 for
+  Three.js world units.
 
 **Task flow** (`tasks` table, `kind` + `status`)
 ```
@@ -94,13 +100,13 @@ the mock result, so the village never stalls.
 1. **Define them** in `app/personas.py`: `id`, `name`, `title`, `role`,
    `color` (UI accent), `workplace` (a key in `world.LOCATIONS`), `start`
    (a walkable tile), `bio`, `schedule` (display text) and `inventory`.
-2. **Give them a sprite.**
-   - Add an entry to `VILLAGERS` in `tools/build_assets.py`: a body type plus
-     LPC layers, each either `("recolor", material, colour)` or
-     `("variant", name)`. Browse the layers in the generator's
-     `sheet_definitions/`.
-   - Rebuild the assets.
-   - Add the id to the villager list in `static/js/render.js`, in `init`.
+2. **Give them a body.**
+   - Add `<id>: "<Character>"` to `VILLAGERS` in `tools/build_models.mjs`.
+     The Adventurers pack has Knight, Mage, Rogue, Rogue_Hooded and
+     Barbarian.
+   - Rebuild the models.
+   - Add the id's working animation to `WORK_ANIM` in `static/js/village3d.js`.
+   - Make `start` in `personas.py` a walkable hex `(col, row)`.
 3. **Give them a job** in `app/sim.py`:
    - Write a role method like `_researcher(self, v) -> bool`. Return `True`
      if they took on work this tick, and `False` to fall through to idling
@@ -114,35 +120,41 @@ the mock result, so the village never stalls.
    - Add a matching method to **both** `MockBrain` and `LiveBrain` in
      `app/brain.py`, with the same signature.
 5. **New building?**
-   - Add a sprite to `SPRITES` in `tools/build_assets.py`.
-   - Add a `world.LOCATIONS` entry with `sprite, px, py` (pixel position),
-     `block` (tile rect) and `door` (the tile to stand on).
-   - Make sure the door connects to a road (stamp one with `_rect` in `build()`).
+   - Add a `world.LOCATIONS` entry with `model` (a file in
+     `static/models/hex/`), `tile` and `door` (a neighbouring hex). The door
+     must join the road network, so stamp a road with `_road(a, b)` in
+     `build()`.
+   - Purely decorative buildings go in `DECOR_BUILDINGS`.
 6. **Check it:** `rm -rf data && python run.py`, post a goal at 16× speed, and
    watch the Activity tab.
 
-## Art (free, openly licensed)
+## Art (free, CC0)
 
-All art is Liberated Pixel Cup (LPC) pixel art, used under CC-BY-SA 3.0 / GPL 3.0 / OGA-BY / CC0 (per file):
-- Scenery, buildings and props come from the `tiles/` folder of
-  [Source of Tales](https://github.com/tales/sourceoftales).
-- Villagers are composited from layers in the
-  [Universal LPC Spritesheet Character Generator](https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator),
-  recoloured with its palettes.
+- **Village and characters:** by Kay Lousberg, released as CC0 (public
+  domain). They come from the
+  [KayKit Medieval Hexagon Pack](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0)
+  and the
+  [KayKit Adventurers Character Pack](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0).
+  Mayor Ada is the Knight, Scout Leo the Rogue and Scribe Maya the Mage.
+- **Trimming:** the characters keep 9 of their 76 animations, and their
+  weapons are removed.
+- **Credit:** attribution isn't required, but `static/models/CREDITS.md`
+  credits the artist anyway.
+- **Custom pieces:** the plaza, cobbles and lanterns are simple Three.js
+  geometry made in `village3d.js`.
+- **Road tiles:** each road hex lists the neighbour directions it connects.
+  The client picks the KayKit road piece and rotation that match (the
+  `ROADS` table). Directions are 0=E, 1=SE, 2=SW, 3=W, 4=NW, 5=NE. Buildings
+  face `face` (their door direction); KayKit models face +z by default.
 
-`static/assets/CREDITS.md` lists every author and **must ship with the art**.
-The art keeps its own licence, separate from the app code. The building
-plaques (book, letter, parcel, quill) are painted over the original shop signs
-by `build_assets.py`.
-
-To change art, edit the tables in `tools/build_assets.py` (`SPRITES`, `VILLAGERS`) and rebuild:
+To change models, edit `MODELS` / `VILLAGERS` / `ANIMS` in `tools/build_models.mjs` and rebuild:
 ```bash
-git clone --depth 1 --filter=blob:none --sparse https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator lpc
-git -C lpc sparse-checkout set --no-cone /palette_definitions/ /sheet_definitions/ /spritesheets/body/ /spritesheets/head/ /spritesheets/hair/ /spritesheets/torso/ /spritesheets/legs/ /spritesheets/feet/ /spritesheets/hat/ /spritesheets/facial/ /spritesheets/backpack/ /spritesheets/cape/
-git clone --depth 1 https://github.com/tales/sourceoftales sot
-python tools/build_assets.py --lpc lpc --sot sot
+git clone --depth 1 https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 hex
+git clone --depth 1 https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 chars
+cd tools && npm install && node build_models.mjs --hex ../hex --chars ../chars
 ```
-Paid art generation is never part of this pipeline. Ask before using any.
+Paid art generation (e.g. Higgsfield) is never part of this pipeline. The
+user has said not to spend credits.
 
 ## Conventions
 

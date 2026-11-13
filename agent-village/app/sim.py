@@ -17,10 +17,10 @@ from .personas import PERSONAS
 WORKSPACE = ROOT / "workspace"
 FRAME = 0.1               # real seconds between movement updates
 DECISION_EVERY = 6.0      # sim seconds between decision ticks
-WALK_SPEED = 3.0          # tiles per sim second
+WALK_SPEED = 1.1          # hexes per sim second
 MIN_PER_SIM_SECOND = 1.0  # sim clock: 1 sim second = 1 village minute
 START_MINUTE = 8 * 60
-CHAT_RADIUS = 2.6
+CHAT_RADIUS = 1.6
 CHAT_COOLDOWN = 75.0
 LINE_SECONDS = 3.2
 
@@ -33,7 +33,8 @@ class Villager:
     def __init__(self, p: dict):
         self.p = p
         self.id, self.name, self.title = p["id"], p["name"], p["title"]
-        self.x, self.y = map(float, p["start"])
+        self.x, self.y = world.center(tuple(p["start"]))
+        self.heading = 1.57  # radians in map space; 0 = east, pi/2 = south (towards the camera)
         self.path: list[tuple[int, int]] = []
         self.on_arrive = None          # callable run when the path ends
         self.state = "idle"            # idle | walking | working | chatting
@@ -49,7 +50,7 @@ class Villager:
 
     @property
     def tile(self) -> tuple[int, int]:
-        return round(self.x), round(self.y)
+        return world.nearest(self.x, self.y)
 
     def busy(self) -> bool:
         return self.work is not None or self.state == "chatting"
@@ -65,6 +66,7 @@ class Villager:
             "id": self.id, "name": self.name, "title": self.title, "color": self.p["color"],
             "hair": self.p["hair"], "skin": self.p["skin"], "accent": self.p["accent"], "hat": self.p["hat"],
             "x": round(self.x, 3), "y": round(self.y, 3), "state": self.state, "facing": self.facing,
+            "heading": round(self.heading, 3),
             "thought": self.thought,
             "bubble": self.bubble["text"] if self.bubble and self.bubble["until"] > now else None,
             "work": {"label": self.work["label"], "icon": self.work["icon"], "progress": prog} if self.work else None,
@@ -122,6 +124,8 @@ class Simulation:
             if v:
                 v.x, v.y, v.thought = row["x"], row["y"], row["thought"]
                 v.inventory = json.loads(row["inventory"])
+                if not world.walkable(v.tile):  # saved by an older map layout
+                    v.x, v.y = world.center(tuple(v.p["start"]))
         # work interrupted by a restart goes back on the board
         self.db.x("UPDATE tasks SET status='pending' WHERE status='in_progress' AND kind!='goal'")
         self.db.x("UPDATE tasks SET status='pending' WHERE status='planning'")
@@ -172,15 +176,17 @@ class Simulation:
             return
         step = WALK_SPEED * dt
         while step > 0 and v.path:
-            tx, ty = v.path[0]
+            tx, ty = world.center(v.path[0])
             dx, dy = tx - v.x, ty - v.y
             dist = math.hypot(dx, dy)
+            if dist > 1e-6:
+                v.heading = math.atan2(dy, dx)
             if abs(dx) > abs(dy):
                 v.facing = "right" if dx > 0 else "left"
             elif dy:
                 v.facing = "down" if dy > 0 else "up"
             if dist <= step:
-                v.x, v.y = float(tx), float(ty)
+                v.x, v.y = tx, ty
                 v.path.pop(0)
                 step -= dist
             else:
@@ -437,6 +443,7 @@ class Simulation:
     def _start_chat(self, a: Villager, b: Villager):
         for v, o in ((a, b), (b, a)):
             v.path, v.state, v.last_chat = [], "chatting", self.now
+            v.heading = math.atan2(o.y - v.y, o.x - v.x)
             v.facing = ("right" if o.x > v.x else "left") if abs(o.x - v.x) > abs(o.y - v.y) else \
                 ("down" if o.y > v.y else "up")
             self.think(v, f"Chatting with {o.name}.")
@@ -483,7 +490,7 @@ class Simulation:
             for b in vs:
                 if a is b or a.state != "walking" or a.on_arrive is None:
                     continue
-                if math.hypot(a.x - b.x, a.y - b.y) < 2.2 and self.now - a.last_greet > 30:
+                if math.hypot(a.x - b.x, a.y - b.y) < 1.3 and self.now - a.last_greet > 30:
                     a.last_greet = self.now
                     self.say(a, random.choice([f"Hi {b.name}! 👋", f"Busy busy, {b.name}!", f"Morning, {b.name}!"
                                                if self.minute < 720 else f"Evening, {b.name}!"]), 2.5)
