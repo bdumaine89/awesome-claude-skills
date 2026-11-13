@@ -1,6 +1,0 @@
-__pycache__/
-workspace/state.json
-workspace/research/*.md
-workspace/outbox/*.md
-!workspace/research/.gitkeep
-!workspace/outbox/.gitkeep

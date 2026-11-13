@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Village</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%238cc56a'/><path d='M2 8 8 3l6 5z' fill='%236b2f2a'/><rect x='4' y='8' width='8' height='6' fill='%23c7765b'/><rect x='7' y='10' width='2' height='4' fill='%235b3a24'/></svg>">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Agent Village</h1>
+      <p class="sub">Three AI villagers. Real files. Cozy vibes.</p>
+    </div>
+  </div>
+
+  <div class="clock" title="Village time">
+    <span id="sky" class="sky" aria-hidden="true"></span>
+    <span id="clock">Day 1 · 08:00</span>
+  </div>
+
+  <div class="controls">
+    <div class="seg" id="modeSeg" role="group" aria-label="Brain mode">
+      <button data-mode="mock" class="on" title="Offline: template content, no API calls">Mock</button>
+      <button data-mode="live" title="Claude API">Live</button>
+    </div>
+    <button id="playBtn" class="btn icon" title="Pause / resume (space)">❚❚</button>
+    <div class="seg" id="speedSeg" role="group" aria-label="Speed">
+      <button data-speed="1" class="on">1×</button><button data-speed="2">2×</button>
+      <button data-speed="4">4×</button><button data-speed="8">8×</button><button data-speed="16">16×</button>
+    </div>
+    <button id="resetBtn" class="btn ghost" title="Wipe tasks, logs and files">Reset</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage">
+    <div class="frame">
+      <canvas id="village" aria-label="Top-down village map. Click a villager to inspect them."></canvas>
+      <div id="tooltip" class="tooltip" hidden></div>
+      <div id="conn" class="conn" hidden>Reconnecting…</div>
+    </div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <aside class="sidebar">
+    <section class="panel">
+      <h2>Post a goal at Town Hall</h2>
+      <form id="goalForm">
+        <input id="goalTitle" name="title" placeholder="e.g. Plan a 4-week golf practice routine" maxlength="160" required autocomplete="off">
+        <textarea id="goalDetail" name="detail" rows="2" placeholder="Extra detail for the Mayor (optional)"></textarea>
+        <div class="chips" id="examples"></div>
+        <button class="btn primary" type="submit">📌 Pin to the task board</button>
+      </form>
+      <p class="hint" id="modeHint"></p>
+    </section>
+
+    <section class="panel grow">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="inspect" class="on">Inspector</button>
+        <button role="tab" data-tab="board">Task board</button>
+        <button role="tab" data-tab="feed">Activity <span id="feedBadge" class="badge" hidden>0</span></button>
+        <button role="tab" data-tab="files">Files</button>
+      </nav>
+      <div class="tab" id="tab-inspect"></div>
+      <div class="tab" id="tab-board" hidden></div>
+      <div class="tab" id="tab-feed" hidden>
+        <div class="filters" id="feedFilters">
+          <button data-f="all" class="on">All</button><button data-f="chat">Chats</button><button data-f="work">Work & files</button>
+        </div>
+        <ul id="feed" class="feed"></ul>
+      </div>
+      <div class="tab" id="tab-files" hidden></div>
+    </section>
+  </aside>
+</main>
+
+<dialog id="fileModal">
+  <header><code id="fileName"></code><button class="btn ghost" id="fileClose">Close</button></header>
+  <article id="fileBody" class="md"></article>
+</dialog>
+
+<script src="/static/js/art.js"></script>
+<script src="/static/js/game.js"></script>
+<script src="/static/js/ui.js"></script>
+</body>
+</html>
