@@ -25,7 +25,7 @@ Read and write its database with the `ArtifactData` tool, using that URL. Read a
 
 | Collection / doc | Shape |
 |---|---|
-| `settings/profile` | `{start:"YYYY-MM-DD", age, heightCm, startLb, goalLb, sex, loc:"gym"\|"hotel", hotelMax, deficit, protein, fat, neat, blocksDone:{}, calib:{exId: lb, exId_h: lb}}` |
+| `settings/profile` | `{start:"YYYY-MM-DD", trips:[{id,start,end,label,src}], autoTravel:true, age, heightCm, startLb, goalLb, sex, loc:"gym"\|"hotel", hotelMax, deficit, protein, fat, neat, blocksDone:{}, calib:{exId: lb, exId_h: lb}}` |
 | `days/<YYYY-MM-DD>` | `{date, weight, bodyFat, activeKcal, restingKcal, steps, hrv, rhr, sleepH, recovery, meals:[...], acts:[...], workouts:[...]}` |
 | `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt, swaps:{fromExId:toExId}}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
 
@@ -60,6 +60,8 @@ Pull the last 7 `days` docs and the logs. Report: sessions done out of 4, averag
 - **Per-set checklist** with load and reps for each set, plus a ▶ Watch demo button on every exercise (opens a YouTube search).
 - **Guided/Voice mode:** a full-screen, set-by-set walkthrough with an auto rest timer. Voice works in desktop browsers; on iPhone it runs silent.
 - **Strength lab** (Body tab): RPE-adjusted e1RM per lift, PRs, and a strength-retention % with a muscle-loss warning.
+- **Travel autopilot:** road trips (scanned from Google Calendar or added by hand) switch sessions to hotel versions automatically. Road weeks put sessions in the order D1 → D3 → D2 and make D4 optional. When he mentions a trip, add it to `settings/profile.trips`.
+- **Animated movement diagrams** for every exercise, plus a dashboard with readiness gauge, rings, week strip and weekly sets per muscle group.
 - **Agent coach** (Coach tab): it can log meals, activities and body data, switch gym/hotel, recalibrate loads, swap exercises and change targets. Every change has an Undo.
 
 ## Reference files
