@@ -27,7 +27,7 @@ Read and write its database with the `ArtifactData` tool, using that URL. Read a
 |---|---|
 | `settings/profile` | `{start:"YYYY-MM-DD", age, heightCm, startLb, goalLb, sex, loc:"gym"\|"hotel", hotelMax, deficit, protein, fat, neat, blocksDone:{}, calib:{exId: lb, exId_h: lb}}` |
 | `days/<YYYY-MM-DD>` | `{date, weight, bodyFat, activeKcal, restingKcal, steps, hrv, rhr, sleepH, recovery, meals:[...], acts:[...], workouts:[...]}` |
-| `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
+| `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt, swaps:{fromExId:toExId}}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
 
 Meal entry: `{id, t:"12:30 PM", name, kcal, p, c, f, src:"claude-chat", items:["food (portion)", ...]}`.
 Activity entry: `{id, type:"hockey"|"golfwalk"|"golfcart"|"range"|"z2"|"walk"|"strength", min}`.
@@ -55,6 +55,12 @@ Set `settings/profile.loc` to "hotel" and use the hotel column in the program re
 
 ### 6. Weekly review (Sunday)
 Pull the last 7 `days` docs and the logs. Report: sessions done out of 4, average kcal against target, average protein, trend weight change, average readiness. Rate the week out of 10 and name the 3 adjustments that matter most, ranked.
+
+## App features you can point him to
+- **Per-set checklist** with load and reps for each set, plus a ▶ Watch demo button on every exercise (opens a YouTube search).
+- **Guided/Voice mode:** a full-screen, set-by-set walkthrough with an auto rest timer. Voice works in desktop browsers; on iPhone it runs silent.
+- **Strength lab** (Body tab): RPE-adjusted e1RM per lift, PRs, and a strength-retention % with a muscle-loss warning.
+- **Agent coach** (Coach tab): it can log meals, activities and body data, switch gym/hotel, recalibrate loads, swap exercises and change targets. Every change has an Undo.
 
 ## Reference files
 - [references/program.md](references/program.md): the full 16-week periodized plan, supersets, loads, and hotel swaps

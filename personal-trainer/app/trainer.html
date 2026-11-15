@@ -134,6 +134,14 @@ table.t td.num{text-align:right}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--board);padding:10px 16px;border-radius:8px;font-size:14px;z-index:20}
 ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 @media (prefers-reduced-motion:no-preference){.ex{transition:background .2s}}
+/* voice-guided session ("Pilot") */
+#pilot{position:fixed;inset:0;z-index:15;background:var(--ice);overflow:auto;padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#pilot .pl{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+#pilot .pl-ex{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,8vw,40px);line-height:1.05;text-wrap:balance}
+#pilot .pl-big{font-family:var(--f-mono);font-size:clamp(22px,6vw,30px);font-weight:600}
+#pilot .pl-done{font-size:22px;padding:18px;width:100%}
+#pilot .ring{display:grid;place-items:center;position:relative}
+#pilot .ring b{position:absolute;font-family:var(--f-mono);font-size:44px;font-weight:600}
 </style>
 
 <header class="top"><div class="in">
@@ -144,6 +152,7 @@ ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 </div></header>
 
 <main class="wrap" id="app"></main>
+<div id="pilot" hidden role="dialog" aria-label="Voice-guided session"></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <input type="file" id="fileImport" accept=".json,.csv,application/json,text/csv" hidden>
 <input type="file" id="filePhoto" accept="image/*" hidden>
@@ -226,7 +235,7 @@ const ACT={hockey:{n:"Rec hockey",met:7,min:60},golfwalk:{n:"Golf, 18 walking",m
 /* ================= STATE ================= */
 const DEF_SETTINGS={start:"2026-11-16",age:36,heightCm:172.7,startLb:182,goalLb:170,sex:"m",loc:"gym",hotelMax:50,deficit:500,protein:175,fat:70,neat:1.4,blocksDone:{},calib:{}};
 const S={settings:{...DEF_SETTINGS},logs:{},days:{},db:null,sample:null,images:false,dict:null,dl:null,ready:false,offline:false,
-  view:{week:null,day:null,fuelDate:null},draftMeal:null,coachOut:"",busy:{}};
+  view:{week:null,day:null,fuelDate:null,lift:null},draftMeal:null,coachOut:"",busy:{},agentLog:[],toolMax:0,tts:null,pilot:null};
 const LS="bluelinetraining.v1";
 function lsLoad(){try{const j=JSON.parse(localStorage.getItem(LS)||"null");if(j){S.settings={...DEF_SETTINGS,...j.settings};S.logs=j.logs||{};S.days=j.days||{};}}catch(e){}}
 function lsSave(){if(!S.offline)return;try{localStorage.setItem(LS,JSON.stringify({settings:S.settings,logs:S.logs,days:S.days}))}catch(e){}}
@@ -271,8 +280,9 @@ const isTest=w=>w===16;
 function dayPlan(w,d){const b=BLOCKS[blockOf(w)];return d===5?RECOVERY_DAY:b.days[d-1]}
 const logKey=(w,d)=>"w"+w+"d"+d;
 function sessionItems(w,d){
-  const p=dayPlan(w,d),items=[{id:"warm",role:"warm",ss:"W"}];
-  p.ss.forEach((s,i)=>{const tag="ABC"[i];items.push({id:s[0],role:s[1],ss:tag,slot:tag+"1"},{id:s[2],role:s[3],ss:tag,slot:tag+"2"})});
+  const p=dayPlan(w,d),items=[{id:"warm",role:"warm",ss:"W"}];const sw=(S.logs[logKey(w,d)]||{}).swaps||{};
+  const mk=(id,role,tag,n)=>({id:EX[sw[id]]?sw[id]:id,orig:EX[sw[id]]?id:null,role,ss:tag,slot:tag+n});
+  p.ss.forEach((s,i)=>{const tag="ABC"[i];items.push(mk(s[0],s[1],tag,"1"),mk(s[2],s[3],tag,"2"))});
   return items;
 }
 function rx(w,d,it){
@@ -328,7 +338,7 @@ function suggest(w,d,it,loc){
   return {u,lb,text:fmtLoad(lb,u),why,cap};
 }
 const demoURL=nm=>"https://www.youtube.com/results?search_query="+encodeURIComponent(nm+" exercise proper form");
-function syncEx(x){const st=x.sets||[];if(!st.length)return;x.done=st.every(s=>s&&s.done);const ls=st.filter(s=>s&&s.done&&s.load!=null);if(ls.length)x.load=Math.max(...ls.map(s=>+s.load))}
+function syncEx(x){const st=x.sets||[];if(!st.length)return;x.done=st.every(s=>s&&s.done);const ls=st.filter(s=>s&&s.done&&s.load!=null);if(ls.length){const top=ls.reduce((a,b)=>+b.load>+a.load?b:a);x.load=+top.load;x.reps=top.reps!=null?+top.reps:null}}
 function fillSets(x,n,sg,done){x.sets=x.sets||[];for(let i=0;i<n;i++){const s=x.sets[i]=x.sets[i]||{};if(done!=null)s.done=done;if(s.done&&s.load==null&&sg&&sg.lb)s.load=sg.lb}x.sets.length=n;syncEx(x)}
 function sessionProgress(w,d){const L=S.logs[logKey(w,d)];const items=sessionItems(w,d);const done=items.filter(it=>L&&L.ex&&L.ex[it.id]&&L.ex[it.id].done).length;return {done,total:items.length}}
 function blockProgress(b){let done=0,total=0;for(let w=BLOCKS[b].w[0];w<=BLOCKS[b].w[1];w++)for(let d=1;d<=4;d++){const p=sessionProgress(w,d);total++;if(p.done===p.total)done++}return {done,total}}
@@ -424,7 +434,7 @@ function vToday(){
     <span class="pill ${RB.cls}">${esc(RB.label)}</span></div>
     <p class="muted" style="margin:0">${esc(RB.advice)}${R&&R.src?` <span class="small">(${esc(R.src)})</span>`:""}</p>
     <div class="row">${locToggle()}<span class="muted small">${pr.done}/${pr.total} done</span></div>
-    <div class="row"><button class="primary" data-act="open" data-w="${ns.w}" data-d="${R&&R.score!=null&&R.score<34?5:ns.d}">${pr.done?"Resume session":"Start session"}</button>
+    <div class="row"><button class="primary" data-act="open" data-w="${ns.w}" data-d="${R&&R.score!=null&&R.score<34?5:ns.d}">${pr.done?"Resume session":"Start session"}</button><button class="blue" data-act="p-start" data-w="${ns.w}" data-d="${R&&R.score!=null&&R.score<34?5:ns.d}">${S.tts?"Voice coach":"Guided mode"}</button>
     <label class="f" style="flex-direction:row;align-items:center;gap:8px">Athlytic recovery % <input id="recToday" type="number" min="0" max="100" inputmode="numeric" style="width:80px" value="${D.recovery??""}" data-act="recovery" data-date="${t}"></label></div>
   </section>
   <section class="grid4">
@@ -466,14 +476,14 @@ function vProgram(){
    <p class="muted small" style="margin:0">${esc(B.goal)}</p>
    <div class="row between">${sessLoc(loc)}<div class="row" role="group" aria-label="Day">${[1,2,3,4,5].map(x=>`<button class="seg" data-act="open" data-w="${w}" data-d="${x}" aria-pressed="${x===d}">${x===5?"Rec":"D"+x}</button>`).join("")}</div></div>
    <div class="clockbar"><div><div class="eyebrow">Session clock</div><div class="clock" id="clock" role="timer" aria-label="Session time left">30:00</div></div>
-     <div class="row" style="gap:6px;flex-wrap:nowrap"><button data-act="clock" aria-pressed="${clock.run}">${clock.run?"Pause":"Start"}</button><button data-act="rest" data-s="${restSecs(B.s.main.rest)}">Rest ${restSecs(B.s.main.rest)}s</button></div></div>
+     <div class="row" style="gap:6px;flex-wrap:nowrap"><button class="blue" data-act="p-start" data-w="${w}" data-d="${d}">${S.tts?"Voice":"Guided"}</button><button data-act="clock" aria-pressed="${clock.run}">${clock.run?"Pause":"Start"}</button><button data-act="rest" data-s="${restSecs(B.s.main.rest)}">Rest ${restSecs(B.s.main.rest)}s</button></div></div>
    <p class="small muted" style="margin:0">Supersets: A1 → A2 → rest, repeat for every round, then B. Tick each set as you finish it; the exercise checks itself off when all sets are done. Log load and reps, and how hard the last set felt (RPE: effort 1–10, 10 = no reps left) so next week's load adjusts. The rest timer starts after each round.</p>`;
   const groups={};items.forEach(it=>{(groups[it.ss]=groups[it.ss]||[]).push(it)});
   for(const g in groups){const first=rx(w,d,groups[g][0]);
     html+=`<div class="ss"><div class="ss-h"><span><span class="tag">${g==="W"?"Prep":g}</span> ${g==="W"?"":"Superset · "+first.sets+" rounds"}</span>${g==="W"||!restSecs(first.rest)||/—|full/.test(first.rest)?"":`<button class="seg" data-act="rest" data-s="${restSecs(first.rest)}" aria-label="Start ${esc(first.rest)} rest timer">Rest ${esc(first.rest)}</button>`}</div>`;
     groups[g].forEach(it=>{const e=EX[it.id],r=rx(w,d,it),sg=suggest(w,d,it,loc),x=(L.ex||{})[it.id]||{};const nm=loc==="hotel"?e.h:e.n;
       html+=`<div class="ex ${x.done?"done":""}"><input type="checkbox" class="chk" data-act="tick" data-w="${w}" data-d="${d}" data-ex="${it.id}" ${x.done?"checked":""} aria-label="Done: ${esc(nm)}">
-       <div style="min-width:0"><div class="exname">${it.slot?`<span class="muted mono small">${it.slot}</span> `:""}${esc(nm)}</div>
+       <div style="min-width:0"><div class="exname">${it.slot?`<span class="muted mono small">${it.slot}</span> `:""}${esc(nm)}${it.orig?` <span class="pill blue">swapped · was ${esc(EX[it.orig].n)}</span>`:""}</div>
        <div class="exline"><span>${it.role==="warm"?esc(r.reps):r.sets+" × "+esc(r.reps)}</span>${r.rpe&&r.rpe!=="—"?`<span>RPE ${esc(r.rpe)}</span>`:""}${sg.text?`<span class="load">${esc(sg.text)}</span>`:""}${sg.why&&sg.why!=="plan"?`<span>${esc(sg.why)}</span>`:""}</div></div>
        ${it.role==="warm"?"":setTable(w,d,it,r,sg,x)}
        ${sg.cap?`<div class="cue" style="border-color:var(--warn)">${esc(sg.cap)}</div>`:""}
@@ -551,6 +561,7 @@ function vBody(){
    <div class="stat"><b>${pj?Math.max(0,pj.remain).toFixed(1):(latestWeight()-S.settings.goalLb).toFixed(1)}</b><span>lb to ${S.settings.goalLb}</span></div><div class="stat"><b>${pj&&pj.eta?esc(parseD(pj.eta).toLocaleDateString(undefined,{month:"short",day:"numeric"})):"—"}</b><span>projected goal date</span></div></div>
    ${weightChart(ser)}
    <p class="small muted" style="margin:0">The trend line smooths out water swings from salt, travel and hard games. Aim for −0.6 to −1.0 lb/week. Faster than −1.2 for two weeks in a row: add 150 kcal back.</p></section>
+  ${strengthLab()}
   <section class="panel"><h3>Recovery inputs · today</h3><div class="grid4">
    <label class="f">Athlytic recovery %<input type="number" inputmode="numeric" data-act="dayfield" data-f="recovery" value="${D.recovery??""}"></label>
    <label class="f">HRV (ms)<input type="number" inputmode="numeric" data-act="dayfield" data-f="hrv" value="${D.hrv??""}"></label>
@@ -592,10 +603,63 @@ function vSync(){
    <p class="small muted" style="margin:0">Stored with this page on claude.ai and visible only to you as the owner and to editors you add.</p></section>`;
 }
 function vCoach(){
-  return `<section class="panel"><h2>Coach</h2><p class="small muted" style="margin:0">Ask anything. The coach sees your current block, recent sessions, readiness, nutrition and weight trend.</p>
+  const agent=S.sample&&S.toolMax>0;
+  return `<section class="panel"><div class="row between"><h2>Coach</h2>${agent?`<span class="pill go">Agent mode · can edit your plan</span>`:""}</div>
+   <p class="small muted" style="margin:0">${agent?"Ask, or tell it to do things: <i>\"log 2 beers and a burger\"</i>, <i>\"I'm in a Denver hotel till Thursday, DBs to 40\"</i>, <i>\"swap trap-bar deadlift for RDL today, my back is tight\"</i>. Every change shows below with an Undo.":"Ask anything. The coach sees your current block, recent sessions, readiness, nutrition and weight trend."}</p>
    <textarea id="coachQ" placeholder="e.g. Flying to Vancouver for 4 days, hotel has DBs to 40 and a bike. Rework this week."></textarea>
-   <div class="row">${S.sample?`<button class="primary" data-act="ask" ${S.busy.coach?"disabled":""}>${S.busy.coach?"Thinking…":"Ask coach"}</button><button data-act="weekly" ${S.busy.coach?"disabled":""}>Weekly review</button><button data-act="swap" ${S.busy.coach?"disabled":""}>Swap an exercise</button>`:`<span class="muted small">The coach needs this page open inside claude.ai.</span>`}</div>
+   <div class="row">${S.sample?`<button class="primary" data-act="ask" ${S.busy.coach?"disabled":""}>${S.busy.coach?"Working…":"Ask coach"}</button><button data-act="weekly" ${S.busy.coach?"disabled":""}>Weekly review</button><button data-act="swap" ${S.busy.coach?"disabled":""}>Swap an exercise</button>${S.dict?`<button data-act="dictate" data-target="coachQ" id="micBtn">${S.busy.dict?"Stop dictation":"Dictate"}</button>`:""}`:`<span class="muted small">The coach needs this page open inside claude.ai.</span>`}</div>
+   ${S.agentLog.length?`<div class="panel" style="background:var(--chip);border:0;gap:6px"><div class="eyebrow">Changes the coach made</div>${S.agentLog.map(j=>`<div class="row between small"><span>${esc(j.label)}</span><button class="ghost seg" data-act="undoagent" data-id="${j.id}">Undo</button></div>`).join("")}</div>`:""}
    ${S.coachOut?`<div class="coach-out" id="coachOut">${esc(S.coachOut)}</div>`:""}</section>`;
+}
+
+/* ================= STRENGTH LAB · e1RM / PRs ================= */
+// Midpoint of a rep prescription: "10–12"→11, "6–8"→7, "5/leg"→5
+const repsNum=r=>{const s=String(r??""),m=s.match(/\d+(?:\.\d+)?/g);if(!m)return null;return m.length>1&&/[–-]/.test(s)?(+m[0]+ +m[1])/2:+m[0]};
+// RPE-adjusted Epley: reps in reserve (10 − RPE) are added to reps done. No RPE logged → assume RPE 8.
+function e1rm(load,reps,rpe){const rir=clamp(10-(rpe||8),0,4),n=reps+rir;return n<=1?load:load*(1+n/30)}
+const liftName=k=>{const [id,loc]=k.split("|");return (loc==="hotel"?EX[id].h+" (hotel)":EX[id].n)};
+function liftHistory(){
+  const H={};
+  for(const k in S.logs){const m=/^w(\d+)d(\d+)$/.exec(k);if(!m||+m[2]===5)continue;const w=+m[1],d=+m[2],L=S.logs[k],loc=L.loc||"gym";
+    for(const it of sessionItems(w,d)){if(!["main","acc"].includes(it.role))continue;const x=L.ex&&L.ex[it.id],e=EX[it.id];if(!x||!x.load||!e)continue;
+      const u=unitInfo(e,loc==="hotel");if(["bw","time","mb"].includes(u))continue;const reps=+x.reps||repsNum(rx(w,d,it).reps);if(!reps||reps>15)continue;
+      const key=it.id+"|"+loc;(H[key]=H[key]||[]).push({ord:w+(d-1)/4,w,d,load:+x.load,reps,rpe:+x.rpe||null,e1:e1rm(+x.load,reps,+x.rpe||null),u,role:it.role})}}
+  for(const k in H){H[k].sort((a,b)=>a.ord-b.ord);let best=0;H[k].forEach(p=>{p.pr=p.e1>best+0.5&&best>0;best=Math.max(best,p.e1)})}
+  return H;
+}
+function retention(H){ // recent best vs early best, per lift with ≥3 sessions
+  const r=Object.values(H).filter(a=>a.length>=3).map(a=>Math.max(...a.slice(-2).map(p=>p.e1))/Math.max(...a.slice(0,2).map(p=>p.e1)));
+  return r.length?r.reduce((x,y)=>x+y,0)/r.length:null;
+}
+const _prSeen={};
+function checkPR(w,d,exId,L){
+  const H=liftHistory()[exId+"|"+(L.loc||"gym")];if(!H)return;const cur=H.find(p=>p.w===w&&p.d===d);if(!cur)return;
+  const prev=H.filter(p=>p.ord<cur.ord);if(!prev.length)return;const best=Math.max(...prev.map(p=>p.e1)),k=w+"."+d+"."+exId;
+  if(cur.e1>best+0.5&&cur.e1>(_prSeen[k]||0)){_prSeen[k]=cur.e1;toast(`PR · ${EX[exId].n}: e1RM ${Math.round(cur.e1)} lb (+${Math.round(cur.e1-best)})`);try{navigator.vibrate&&navigator.vibrate([60,40,60])}catch(e){}}
+}
+function strengthSummary(){
+  const H=liftHistory(),ks=Object.keys(H).filter(k=>H[k][0].role==="main");if(!ks.length)return "";const rt=retention(H);
+  return "Strength (RPE-adjusted e1RM, lb): "+ks.map(k=>{const a=H[k],b=Math.max(...a.map(p=>p.e1));return `${liftName(k)} last ${Math.round(a[a.length-1].e1)}, best ${Math.round(b)}`}).join("; ")+(rt?`. Strength retention ${Math.round(rt*100)}% of early-program e1RM.`:"");
+}
+function strengthLab(){
+  const H=liftHistory(),keys=Object.keys(H).sort((a,b)=>(H[b][0].role==="main")-(H[a][0].role==="main")||H[b].length-H[a].length);
+  if(!keys.length)return `<section class="panel"><h3>Strength lab</h3><p class="muted small" style="margin:0">Log the load, reps and RPE on any main or accessory lift. Your estimated 1RM, PRs and a strength-retention score for the cut appear here.</p></section>`;
+  const sel=keys.includes(S.view.lift)?S.view.lift:keys[0],ser=H[sel],best=Math.max(...ser.map(p=>p.e1)),last=ser[ser.length-1],rt=retention(H),bw=latestWeight(),pj=projection();
+  const W=640,Ht=200,pl=40,pr=12,pt=12,pb=24,lo=Math.floor(Math.min(...ser.map(p=>p.load))*0.95),hi=Math.ceil(best*1.05);
+  const x=o=>pl+(W-pl-pr)*(o-1)/15.75,y=v=>pt+(Ht-pt-pb)*(1-(v-lo)/Math.max(1,hi-lo));
+  let s=`<div class="chart"><svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Estimated one-rep max for ${esc(liftName(sel))}">`;
+  const st=Math.max(5,r5((hi-lo)/4));for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="JetBrains Mono,monospace">${v}</text>`;
+  BLOCKS.forEach(b=>s+=`<line x1="${x(b.w[0])}" x2="${x(b.w[0])}" y1="${pt}" y2="${Ht-pb}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${x(b.w[0])+4}" y="${Ht-8}" font-size="10" fill="var(--muted)" font-family="JetBrains Mono,monospace">wk ${b.w[0]}</text>`);
+  ser.forEach(p=>s+=`<circle cx="${x(p.ord)}" cy="${y(p.load)}" r="2.5" fill="var(--muted)" opacity=".55"/>`);
+  s+=`<path d="${ser.map((p,i)=>(i?"L":"M")+x(p.ord).toFixed(1)+" "+y(p.e1).toFixed(1)).join(" ")}" fill="none" stroke="var(--blue)" stroke-width="2.5"/>`;
+  ser.forEach(p=>s+=`<circle cx="${x(p.ord)}" cy="${y(p.e1)}" r="${p.pr?5:3.5}" fill="${p.pr?"var(--red)":"var(--blue)"}"><title>W${p.w}D${p.d}: ${p.load} × ${p.reps}${p.rpe?" @"+p.rpe:""} → e1RM ${Math.round(p.e1)}</title></circle>`);
+  s+=`</svg></div>`;
+  const warn=rt!=null&&rt<0.95&&pj&&pj.perWk<0?`<div class="banner">Strength is down ${Math.round((1-rt)*100)}% while the scale drops. That's the muscle-loss signal on a cut: hold protein at ${S.settings.protein}+ g, take 150 kcal off the deficit, and keep main lifts at RPE 8, not 9+.</div>`:"";
+  return `<section class="panel"><div class="row between"><h3>Strength lab</h3><select data-act="lift" aria-label="Lift">${keys.map(k=>`<option value="${esc(k)}" ${k===sel?"selected":""}>${esc(liftName(k))}</option>`).join("")}</select></div>
+   <div class="grid4"><div class="stat"><b>${Math.round(last.e1)}</b><span>e1RM now · ${esc(fmtLoad("",last.u).trim()||"lb")}</span></div><div class="stat"><b>${Math.round(best)}</b><span>best e1RM · ${ser.filter(p=>p.pr).length} PRs</span></div>
+   <div class="stat"><b>${last.u==="bb"?(best/bw).toFixed(2)+"×":"—"}</b><span>relative to ${bw} lb body weight</span></div><div class="stat"><b>${rt!=null?Math.round(rt*100)+"%":"—"}</b><span>strength retained · all lifts</span></div></div>
+   ${s}${warn}
+   <p class="small muted" style="margin:0">Blue line: estimated 1RM, Epley adjusted for reps in reserve (10 − RPE). Grey dots: the load you lifted. Red: a PR. Leave reps blank and the prescription midpoint is used. Over 10 reps the estimate gets loose, so trust the trend more than any one number.</p></section>`;
 }
 
 /* ================= CLAUDE ================= */
@@ -609,15 +673,75 @@ function contextSummary(){
   lines.push("Last 7 days:\n"+days.join("\n"));
   const pj=projection();if(pj)lines.push(`Weight trend ${pj.trend.toFixed(1)} lb, ${pj.perWk.toFixed(2)} lb/wk.`);
   const ns=nextSession();const p=dayPlan(ns.w,ns.d);lines.push(`Next session: W${ns.w} D${ns.d} ${p.n}: `+sessionItems(ns.w,ns.d).filter(i=>i.slot).map(i=>i.slot+" "+EX[i.id].n).join(", "));
+  const sx=strengthSummary();if(sx)lines.push(sx);
   lines.push(`Targets: ${targets(today()).kcal} kcal, ${S.settings.protein} g protein.`);
   return lines.join("\n");
 }
 async function askCoach(q){
   if(!S.sample||S.busy.coach)return;S.busy.coach=true;S.coachOut="";render();
-  const prompt=`You are an elite strength & conditioning coach and sports dietitian (CSCS, RD level) coaching a recreational hockey player and golfer through a 16-week periodized fat-loss program. Be direct and specific: real numbers, loads in lb, sets×reps, and no fluff. If the athlete's idea is weak, say so and explain why. Keep it under 300 words unless a full session rewrite is asked for. Plain text, short lines, no markdown tables.\n\nATHLETE CONTEXT\n${contextSummary()}\n\nQUESTION\n${q}`;
-  try{const r=await S.sample(prompt,{cache:false,modelTier:"default",onText:u=>{S.coachOut=u.text;const el=$("#coachOut");if(el)el.textContent=u.text;else if(route()==="coach")render()}});S.coachOut=r.text}
-  catch(e){S.coachOut=e.code==="not_granted"?"The coach needs permission to ask Claude. Allow it in this page's Permissions menu.":e.code==="rate_limited"?"Too many requests right now. Try again in a minute.":"The coach couldn't answer ("+(e.message||e.code)+"). Try again."}
+  const tools=S.toolMax>0?coachTools().slice(0,S.toolMax):null;
+  const agentRules=tools?`\n\nYOU CAN CHANGE THE APP with the tools provided. Use them only when the athlete asks for an action or clearly states a fact to record (a meal eaten, a weigh-in, "I'm at a hotel", "swap X"). Never invent numbers he didn't give except meal macros, which you estimate realistically (restaurant oil included). Read a day with get_day before you delete anything. Never set a deficit that would push intake under 1,800 kcal. After acting, start your reply with a short "Done:" line listing each change, then coach.\nEXERCISE IDS (id: gym name / hotel name [unit]):\n${Object.entries(EX).filter(([k])=>k!=="warm").map(([k,e])=>`${k}: ${e.n} / ${e.h} [${e.u}]`).join("\n")}\nToday is ${today()}.`:"";
+  const prompt=`You are an elite strength & conditioning coach and sports dietitian (CSCS, RD level) coaching a recreational hockey player and golfer through a 16-week periodized fat-loss program. Be direct and specific: real numbers, loads in lb, sets×reps, and no fluff. If the athlete's idea is weak, say so and explain why. If he reports pain, don't progress that pattern, give a pain-free regression and suggest the team physio. Keep it under 300 words unless a full session rewrite is asked for. Plain text, short lines, no markdown tables.${agentRules}\n\nATHLETE CONTEXT\n${contextSummary()}\n\nMESSAGE\n${q}`;
+  const opts={cache:false,modelTier:"default",onText:u=>{S.coachOut=u.text;const el=$("#coachOut");if(el)el.textContent=u.text;else if(route()==="coach")render()}};if(tools)opts.tools=tools;
+  try{let r;try{r=await S.sample(prompt,opts)}catch(e){if(e.code!=="tools_unavailable")throw e;S.toolMax=0;delete opts.tools;r=await S.sample(prompt,opts)}S.coachOut=r.text+(r.truncated?"\n\n(Cut off at the length limit. Ask a narrower question.)":"")}
+  catch(e){S.coachOut=(e.text?e.text+"\n\n":"")+(e.code==="not_granted"?"The coach needs permission to ask Claude. Allow it in this page's Permissions menu.":e.code==="rate_limited"?"Too many requests right now. Try again in a minute.":"The coach couldn't finish ("+(e.message||e.code)+"). Any changes listed above were still made.")}
   S.busy.coach=false;render();
+}
+/* ---- Coach agent: page functions Claude may call (sample tools) ---- */
+const toolDate=x=>{const d=String(x||today());if(!/^\d{4}-\d{2}-\d{2}$/.test(d))throw new Error("date must be YYYY-MM-DD");if(d>addDays(today(),1))throw new Error("can't log more than one day ahead");return d};
+const tnum=(x,lo,hi,name)=>{const v=Number(x);if(!isFinite(v)||v<lo||v>hi)throw new Error(name+" must be a number from "+lo+" to "+hi);return v};
+const docOf=path=>path.startsWith("days/")?S.days[path.slice(5)]:path.startsWith("log/")?S.logs[path.slice(4)]:S.settings;
+// undo: day docs get a precise inverse (remove/re-add one item, restore named fields) so other changes survive; settings and session logs restore a snapshot
+function journal(label,path,inv){S.agentLog.unshift({id:uid(),label,path,inv,prev:docOf(path)?JSON.parse(JSON.stringify(docOf(path))):null});S.agentLog=S.agentLog.slice(0,25)}
+function undoAgent(id){
+  const i=S.agentLog.findIndex(x=>x.id===id);if(i<0)return;const j=S.agentLog[i];
+  if(j.inv){const d=j.path.slice(5),D={...dayDoc(d)},v=j.inv;if(v.fields){for(const k in v.fields){if(v.fields[k]==null)delete D[k];else D[k]=v.fields[k]}}else if(v.add)D[v.f]=[...(D[v.f]||[]),v.add];else D[v.f]=(D[v.f]||[]).filter(x=>x.id!==v.id);saveDay(d,D);S.agentLog.splice(i,1);toast("Undone: "+j.label);render();return}
+  let prev=j.prev;
+  if(!prev){if(j.path.startsWith("days/"))prev={date:j.path.slice(5),meals:[],acts:[]};else{const m=/w(\d+)d(\d+)/.exec(j.path);prev={w:+m[1],d:+m[2],ex:{},loc:S.settings.loc}}}
+  save(j.path,prev);// restoring a doc also rolls back any later coach change to the same doc
+  S.agentLog=S.agentLog.filter((x,k)=>!(k<=i&&x.path===j.path&&!x.inv));toast("Undone: "+j.label);render();
+}
+function coachTools(){
+  const exIds=Object.keys(EX).filter(k=>k!=="warm"),d0={type:"string",description:"YYYY-MM-DD; omit for today"};
+  const dayOut=d=>{const e=energyIn(d),t=targets(d);return {date:d,kcal_in:e.kcal,protein_g:Math.round(e.p),target_kcal:t.kcal,target_protein_g:t.p}};
+  return [
+  {name:"get_day",description:"Read one day: meals (with ids), activities, weigh-in, recovery inputs, kcal/protein so far vs target. Returns JSON.",
+   inputSchema:{type:"object",properties:{date:d0}},
+   execute(i){const d=toolDate(i.date),D=dayDoc(d);return {...dayOut(d),meals:(D.meals||[]).map(m=>({id:m.id,name:m.name,kcal:m.kcal,p:m.p})),acts:(D.acts||[]).map(a=>({id:a.id,type:a.type,min:a.min})),watch_workouts:(D.workouts||[]).map(w=>w.name+" "+w.min+" min"),weight:D.weight??null,recovery:D.recovery??null,hrv:D.hrv??null,sleepH:D.sleepH??null}}},
+  {name:"log_meal",description:"Append a meal to a day's food log. Estimate macros realistically if he didn't give them. Returns the day's new totals vs target.",
+   inputSchema:{type:"object",properties:{date:d0,name:{type:"string"},kcal:{type:"number"},protein_g:{type:"number"},carbs_g:{type:"number"},fat_g:{type:"number"},items:{type:"array",items:{type:"string"},description:"'food (portion)' strings"}},required:["name","kcal","protein_g"]},
+   execute(i){const d=toolDate(i.date);const m={id:uid(),t:new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}),name:String(i.name||"Meal").slice(0,60),kcal:Math.round(tnum(i.kcal,0,5000,"kcal")),p:Math.round(tnum(i.protein_g??0,0,300,"protein_g")),c:Math.round(tnum(i.carbs_g??0,0,800,"carbs_g")),f:Math.round(tnum(i.fat_g??0,0,300,"fat_g")),src:"coach",items:Array.isArray(i.items)?i.items.slice(0,15).map(String):[]};
+     journal(`Logged "${m.name}" · ${m.kcal} kcal · ${d}`,"days/"+d,{f:"meals",id:m.id});const D={...dayDoc(d)};D.meals=[...(D.meals||[]),m];saveDay(d,D);render();return {ok:true,meal_id:m.id,...dayOut(d)}}},
+  {name:"delete_meal",description:"Remove one meal by id (get ids from get_day). Use only when he says a meal was wrong or duplicated.",
+   inputSchema:{type:"object",properties:{date:d0,meal_id:{type:"string"}},required:["meal_id"]},
+   execute(i){const d=toolDate(i.date),D={...dayDoc(d)},m=(D.meals||[]).find(x=>x.id===String(i.meal_id));if(!m)throw new Error("no meal with that id on "+d);journal(`Deleted "${m.name}" · ${d}`,"days/"+d,{f:"meals",add:m});D.meals=D.meals.filter(x=>x!==m);saveDay(d,D);render();return {ok:true,...dayOut(d)}}},
+  {name:"log_activity",description:"Log hockey, golf, range, zone 2, a walk or a strength session. Calories are computed from MET and body weight. Returns the day's new kcal target (hockey/golf earn half back).",
+   inputSchema:{type:"object",properties:{date:d0,type:{type:"string",enum:Object.keys(ACT)},min:{type:"number"}},required:["type"]},
+   execute(i){const d=toolDate(i.date),type=String(i.type);if(!ACT[type])throw new Error("type must be one of "+Object.keys(ACT).join(", "));const a={id:uid(),type,min:Math.round(tnum(i.min??ACT[type].min,5,480,"min"))};journal(`Logged ${ACT[type].n} ${a.min} min · ${d}`,"days/"+d,{f:"acts",id:a.id});const D={...dayDoc(d)};D.acts=[...(D.acts||[]),a];saveDay(d,D);render();return {ok:true,kcal:actKcal(a),...dayOut(d)}}},
+  {name:"log_body",description:"Record any of: weigh-in (lb), body-fat %, Athlytic recovery %, HRV ms, resting HR, sleep hours for a day. Returns the readiness call and weight trend.",
+   inputSchema:{type:"object",properties:{date:d0,weight_lb:{type:"number"},body_fat:{type:"number"},recovery:{type:"number"},hrv:{type:"number"},rhr:{type:"number"},sleep_h:{type:"number"}}},
+   execute(i){const d=toolDate(i.date),D={...dayDoc(d)},set=[],prevF={};const f=(k,src,lo,hi,dp)=>{if(i[src]==null)return;prevF[k]=D[k]??null;D[k]=+tnum(i[src],lo,hi,src).toFixed(dp);set.push(src+" "+D[k])};
+     f("weight","weight_lb",90,400,1);f("bodyFat","body_fat",3,60,1);f("recovery","recovery",0,100,0);f("hrv","hrv",5,300,0);f("rhr","rhr",30,120,0);f("sleepH","sleep_h",0,16,1);if(!set.length)throw new Error("give at least one value");
+     journal(`Body: ${set.join(", ")} · ${d}`,"days/"+d,{fields:prevF});saveDay(d,D);render();const R=readinessBand(readiness(d)),pj=projection();return {ok:true,readiness:R.label,advice:R.advice,trend_lb:pj?+pj.trend.toFixed(1):null,lb_per_week:pj?+pj.perWk.toFixed(2):null}}},
+  {name:"set_location",description:"Switch the default training location (work gym or hotel) and optionally the heaviest hotel dumbbell. All loads and exercise names re-plan instantly.",
+   inputSchema:{type:"object",properties:{loc:{type:"string",enum:["gym","hotel"]},hotel_max_db_lb:{type:"number"}},required:["loc"]},
+   execute(i){const loc=i.loc==="hotel"?"hotel":"gym",s={...S.settings,loc};if(i.hotel_max_db_lb!=null)s.hotelMax=tnum(i.hotel_max_db_lb,10,150,"hotel_max_db_lb");journal(`Location → ${loc}${loc==="hotel"?" (DBs to "+s.hotelMax+")":""}`,"settings/profile");save("settings/profile",s);
+     const ns=nextSession(),L=S.logs[logKey(ns.w,ns.d)];if(L&&!L.completedAt&&L.loc!==loc){const L2=sessLog(ns.w,ns.d);journal(`W${ns.w}D${ns.d} location → ${loc}`,"log/"+logKey(ns.w,ns.d));L2.loc=loc;save("log/"+logKey(ns.w,ns.d),L2)}render();
+     return {ok:true,next_session:sessionItems(ns.w,ns.d).filter(x=>x.slot).map(x=>{const sg=suggest(ns.w,ns.d,x,loc);return x.slot+" "+(loc==="hotel"?EX[x.id].h:EX[x.id].n)+(sg.text?" "+sg.text:"")})}}},
+  {name:"set_calibration",description:"Reset an exercise's base load (lb it can be done for 10–12 reps at RPE 7, in its own unit) so all future suggestions rescale. Use when he says a load is way too easy or too hard.",
+   inputSchema:{type:"object",properties:{exercise_id:{type:"string",enum:exIds},lb:{type:"number"},hotel:{type:"boolean"}},required:["exercise_id","lb"]},
+   execute(i){const id=String(i.exercise_id);if(!EX[id])throw new Error("unknown exercise_id");const k=id+(i.hotel?"_h":""),lb=tnum(i.lb,0,600,"lb"),c={...S.settings.calib,[k]:lb};journal(`Base load ${EX[id].n}${i.hotel?" (hotel)":""} → ${lb} lb`,"settings/profile");save("settings/profile",{...S.settings,calib:c});render();return {ok:true}}},
+  {name:"swap_exercise",description:"Replace one exercise in a session (default: the next session) with another from the exercise list, keeping its superset slot and role. Pass to_id equal to from_id to undo a swap. Returns the new session.",
+   inputSchema:{type:"object",properties:{week:{type:"number"},day:{type:"number",description:"1-4, or 5 for recovery"},from_id:{type:"string",enum:exIds},to_id:{type:"string",enum:exIds}},required:["from_id","to_id"]},
+   execute(i){const ns=nextSession(),w=Math.round(tnum(i.week??ns.w,1,16,"week")),d=Math.round(tnum(i.day??ns.d,1,5,"day")),from=String(i.from_id),to=String(i.to_id);
+     if(!EX[to]||to==="warm")throw new Error("unknown to_id");const base=dayPlan(w,d).ss.flatMap(s=>[s[0],s[2]]);if(!base.includes(from))throw new Error(`${from} isn't in W${w}D${d}; it has ${base.join(", ")}`);
+     if(to!==from&&sessionItems(w,d).some(x=>x.id===to))throw new Error(to+" is already in that session");
+     journal(`W${w}D${d}: ${EX[from].n} → ${EX[to].n}`,"log/"+logKey(w,d));const L=sessLog(w,d);L.swaps={...(L.swaps||{})};if(to===from)delete L.swaps[from];else L.swaps[from]=to;save("log/"+logKey(w,d),L);render();
+     return {ok:true,session:sessionItems(w,d).filter(x=>x.slot).map(x=>x.slot+" "+EX[x.id].n)}}},
+  {name:"set_nutrition",description:"Change the daily deficit (kcal) and/or protein target (g). The 1,800 kcal floor is always enforced. Returns today's new targets.",
+   inputSchema:{type:"object",properties:{deficit:{type:"number"},protein_g:{type:"number"}}},
+   execute(i){const s={...S.settings};if(i.deficit!=null)s.deficit=Math.round(tnum(i.deficit,0,1000,"deficit"));if(i.protein_g!=null)s.protein=Math.round(tnum(i.protein_g,100,260,"protein_g"));journal(`Targets → deficit ${s.deficit}, protein ${s.protein} g`,"settings/profile");save("settings/profile",s);render();const t=targets(today());return {ok:true,kcal:t.kcal,protein_g:t.p,carbs_g:t.c,fat_g:t.f}}},
+  ];
 }
 async function compressImage(file){
   try{const bmp=await createImageBitmap(file);const sc=Math.min(1,1280/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
@@ -703,12 +827,13 @@ document.addEventListener("click",async ev=>{
   else if(a==="settick"){const w=+ds.w,d=+ds.d,i=+ds.i;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const it=sessionItems(w,d).find(q=>q.id===ds.ex);const sg=suggest(w,d,it,L.loc||S.settings.loc);
     fillSets(x,rx(w,d,it).sets,sg);const s=x.sets[i];s.done=b.checked;if(s.done&&s.load==null&&sg.lb)s.load=sg.lb;syncEx(x);
     if(s.done&&clock.rest===0){const grp=sessionItems(w,d).filter(q=>q.ss===it.ss);if(grp[grp.length-1].id===ds.ex){const rr=rx(w,d,it).rest;const sec=restSecs(rr||"");if(sec&&!/—|full/.test(rr||"")){clock.rest=sec}}}
-    afterTick(w,d,L);save("log/"+logKey(w,d),L);render()}
+    afterTick(w,d,L);save("log/"+logKey(w,d),L);if(s.done)checkPR(w,d,ds.ex,L);render()}
   else if(a==="completeall"){const w=+ds.w,d=+ds.d;const L=sessLog(w,d);sessionItems(w,d).forEach(it=>{const x=L.ex[it.id]=L.ex[it.id]||{};if(it.role==="warm"){x.done=true;return}fillSets(x,rx(w,d,it).sets,suggest(w,d,it,L.loc||S.settings.loc),true)});afterTick(w,d,L);save("log/"+logKey(w,d),L);render()}
   else if(a==="resetsess"){const w=+ds.w,d=+ds.d;const L=sessLog(w,d);Object.values(L.ex).forEach(x=>{x.done=false;(x.sets||[]).forEach(s=>{if(s)s.done=false})});delete L.completedAt;save("log/"+logKey(w,d),L);render()}
   else if(a==="blockdone"){const bd={...S.settings.blocksDone};bd[ds.b]=b.checked;save("settings/profile",{...S.settings,blocksDone:bd});render()}
   else if(a==="clock"){clock.run=!clock.run;b.textContent=clock.run?"Pause":"Start";b.setAttribute("aria-pressed",clock.run)}
   else if(a==="rest"){clock.rest=+ds.s;tickClock()}
+  else if(a.startsWith("p-")){pilotAct(a,ds)}
   else if(a==="addact"){const D={...dayDoc(ds.date)};D.acts=[...(D.acts||[]),{id:uid(),type:ds.type,min:ACT[ds.type].min}];saveDay(ds.date,D);toast(ACT[ds.type].n+" logged");render()}
   else if(a==="delact"){const D={...dayDoc(ds.date)};D.acts=(D.acts||[]).filter(x=>x.id!==ds.id);saveDay(ds.date,D);render()}
   else if(a==="estimate"){estimateMeal(ds.date)}
@@ -726,12 +851,14 @@ document.addEventListener("click",async ev=>{
   else if(a==="ask"){const q=$("#coachQ").value.trim();if(!q){toast("Type a question first.");return}askCoach(q)}
   else if(a==="weekly"){askCoach("Give me my weekly review: training compliance, nutrition adherence vs targets, weight trend vs the 0.6–1.0 lb/week goal, recovery pattern. Then the 3 most important adjustments for next week, ranked. Rate my week out of 10 and say why.")}
   else if(a==="swap"){const q=$("#coachQ").value.trim();askCoach("I need an exercise swap for my next session"+(q?": "+q:" (equipment is taken or I'm in a hotel)")+". Keep the movement pattern and superset intent, and give the load in lb.")}
-  else if(a==="dictate"){if(S.busy.dict){S.dict.stop().catch(()=>{});return}S.dict.start().catch(e=>{if(e.code==="not_granted"){S.dict=null;render()}})}
+  else if(a==="undoagent"){undoAgent(ds.id)}
+  else if(a==="dictate"){if(S.busy.dict){S.dict.stop().catch(()=>{});return}S.dictTarget=ds.target||"mealText";S.dict.start().catch(e=>{if(e.code==="not_granted"){S.dict=null;render()}})}
 });
 document.addEventListener("change",ev=>{
   const el=ev.target,ds=el.dataset,a=ds.act;if(!a)return;
-  if(a==="setload"||a==="setreps"){const w=+ds.w,d=+ds.d,i=+ds.i;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const it=sessionItems(w,d).find(q=>q.id===ds.ex);fillSets(x,rx(w,d,it).sets,null);const v=parseFloat(el.value);x.sets[i][a==="setload"?"load":"reps"]=isNaN(v)?null:v;syncEx(x);save("log/"+logKey(w,d),L);return}
-  if(a==="load"||a==="rpe"){const w=+ds.w,d=+ds.d;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const v=parseFloat(el.value);if(a==="load")x.load=isNaN(v)?null:v;else x.rpe=isNaN(v)?null:v;save("log/"+logKey(w,d),L)}
+  if(a==="setload"||a==="setreps"){const w=+ds.w,d=+ds.d,i=+ds.i;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const it=sessionItems(w,d).find(q=>q.id===ds.ex);fillSets(x,rx(w,d,it).sets,null);const v=parseFloat(el.value);x.sets[i][a==="setload"?"load":"reps"]=isNaN(v)?null:v;syncEx(x);save("log/"+logKey(w,d),L);if(x.sets[i].done)checkPR(w,d,ds.ex,L);return}
+  if(a==="load"||a==="rpe"||a==="reps"){const w=+ds.w,d=+ds.d;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const v=parseFloat(el.value);if(a==="load")x.load=isNaN(v)?null:v;else if(a==="reps")x.reps=isNaN(v)?null:Math.round(v);else x.rpe=isNaN(v)?null:v;save("log/"+logKey(w,d),L);checkPR(w,d,ds.ex,L)}
+  else if(a==="lift"){S.view.lift=el.value;render()}
   else if(a==="calib"){const c={...S.settings.calib};const v=parseFloat(el.value);if(isNaN(v))delete c[ds.k];else c[ds.k]=v;save("settings/profile",{...S.settings,calib:c});setTimeout(render,0)}
   else if(a==="setting"){const v=ds.k==="start"?el.value:parseFloat(el.value);if(ds.k==="start"&&!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast("Use the format YYYY-MM-DD.");return}if(ds.k!=="start"&&isNaN(v))return;save("settings/profile",{...S.settings,[ds.k]:v});setTimeout(render,0)}
   else if(a==="recovery"||a==="dayfield"){const d=ds.date||today();const D={...dayDoc(d)};const f=a==="recovery"?"recovery":ds.f;const v=parseFloat(el.value);if(isNaN(v))delete D[f];else D[f]=f==="recovery"?clamp(Math.round(v),0,100):v;saveDay(d,D);setTimeout(render,0)}
@@ -740,14 +867,97 @@ $("#fileImport").addEventListener("change",e=>{const f=e.target.files[0];if(f)im
 $("#filePhoto").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const blob=await compressImage(f);S.draftMeal={...(S.draftMeal||{}),photo:blob,photoName:f.name};toast("Photo attached. Add a note if you like, then Estimate.");render()});
 window.addEventListener("hashchange",()=>{window.scrollTo(0,0);render()});
 
+/* ================= PILOT · voice-guided session ================= */
+const restSec=s=>{s=String(s||"");if(/full/i.test(s))return 90;const m=s.match(/(\d+)\s*(min|s)/);return m?(m[2]==="min"?+m[1]*60:+m[1]):0};
+const sayReps=r=>{const s=String(r||"").replace(/ \/ /g,", ").replace(/×(\d+)/g,"$1 reps").replace(/–/g," to ").replace(/×/g,"by").replace(/\/(?=[a-z])/g," per ").replace(/(\d) ?s\b/g,"$1 seconds").replace(/\bmin\b/g,"minutes").replace(/\bm\b/g,"meters").replace(/@ ?HR/g,"at heart rate");return /^[\d.]+( to [\d.]+)?$/.test(s)?s+" reps":s};
+const sayLoad=(lb,u)=>fmtLoad(lb,u).replace("lb ×2","pound dumbbells").replace("lb DB","pound dumbbell").replace("lb stack","on the stack").replace("lb plates","pounds of plates").replace("lb ball","pound ball").replace(/\blb\b/,"pounds");
+function say(text){const P=S.pilot;if(!S.tts||!P||P.mute)return;S.tts.speak(text,{rate:1.08}).catch(e=>{if(e.code==="not_granted"){S.tts=null;renderPilot()}})}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function buildPilot(w,d){
+  const L=S.logs[logKey(w,d)]||{},loc=L.loc||S.settings.loc,RB=readinessBand(readiness(today())),trim=RB.cls==="warn"&&!isDeload(w)&&d<5;
+  const groups=[];sessionItems(w,d).forEach(it=>{let g=groups.find(x=>x.ss===it.ss);if(!g)groups.push(g={ss:it.ss,its:[]});g.its.push(it)});
+  const done=id=>L.ex&&L.ex[id]&&L.ex[id].done;
+  const P={w,d,loc,trim,i:0,phase:"work",steps:[],load:{},sg:{},rpe:{},t0:Date.now(),mute:false,wake:null};
+  groups.forEach(g=>{const n=it=>{const s=rx(w,d,it).sets;return trim&&g.ss!=="W"&&s>1?s-1:s};const rounds=Math.max(...g.its.map(n)),rest=restSec(rx(w,d,g.its[0]).rest)||60;
+    g.its.forEach(it=>{const sg=suggest(w,d,it,loc);P.sg[it.id]=sg;P.load[it.id]=(L.ex&&L.ex[it.id]&&L.ex[it.id].load)||sg.lb;});
+    for(let r=1;r<=rounds;r++){const here=g.its.filter(it=>r<=n(it)&&!done(it.id));here.forEach((it,k)=>P.steps.push({it,r,n:n(it),rest:g.ss==="W"?0:k===here.length-1?rest:0}))}});
+  return P;
+}
+function stepLine(st,short){
+  const P=S.pilot,e=EX[st.it.id],R=rx(P.w,P.d,st.it),lb=P.load[st.it.id],u=P.sg[st.it.id].u,nm=P.loc==="hotel"?e.h:e.n;
+  let s=(st.it.slot?st.it.slot.split("").join(" ")+". ":"")+nm+". ";if(st.n>1)s+="Set "+st.r+" of "+st.n+". ";
+  if(st.it.role==="warm")return s+sayReps(R.reps)+(short?"":". "+e.cue.split(" · ").slice(0,3).map(sayReps).join(", ")+".");
+  s+=(lb?sayLoad(lb,u)+", ":"")+sayReps(R.reps)+(R.rpe&&R.rpe!=="—"?", R P E "+R.rpe:"")+".";
+  if(!short&&st.r===1)s+=" "+e.cue.split(". ")[0].replace(/\.$/,"")+".";
+  if(!short&&st.r===1&&P.sg[st.it.id].cap)s+=" Hotel cap, so slow the lowering to 4 seconds.";
+  return s;
+}
+async function startPilot(w,d){
+  S.pilot=buildPilot(w,d);const P=S.pilot;if(!P.steps.length){S.pilot=null;toast("This session is already done.");return}
+  try{if(navigator.wakeLock)P.wake=await navigator.wakeLock.request("screen")}catch(e){}
+  const p=dayPlan(w,d);say(`Week ${w}, ${d===5?p.n:"day "+d+", "+p.n}. ${P.loc==="hotel"?"Hotel version. ":""}${P.trim?"Readiness is yellow, so I've dropped the last round of each superset and we cap effort at R P E 7. ":""}${P.steps.length} sets. First up: ${stepLine(P.steps[0])}`);
+  renderPilot();
+}
+function logPilotItem(it){
+  const P=S.pilot,L=sessLog(P.w,P.d),x=L.ex[it.id]=L.ex[it.id]||{};L.loc=P.loc;
+  if(it.role==="warm")x.done=true;else{const n=rx(P.w,P.d,it).sets;x.sets=x.sets||[];for(let k=0;k<n;k++){const q=x.sets[k]=x.sets[k]||{};if(!q.done){q.done=true;if(P.load[it.id])q.load=P.load[it.id]}}x.sets.length=n;syncEx(x)}
+  if(P.load[it.id]&&x.load==null)x.load=P.load[it.id];if(P.rpe[it.id])x.rpe=P.rpe[it.id];afterTick(P.w,P.d,L);save("log/"+logKey(P.w,P.d),L);
+  if(x.load&&typeof checkPR==="function")checkPR(P.w,P.d,it.id,L);
+}
+function endPilot(){const P=S.pilot;if(P&&P.wake)P.wake.release().catch(()=>{});if(S.tts)try{S.tts.stop()}catch(e){}S.pilot=null;renderPilot();render()}
+function pilotAct(a,ds){
+  if(a==="p-start"){startPilot(+ds.w,+ds.d);return}
+  const P=S.pilot;if(!P)return;const st=P.steps[P.i];
+  if(a==="p-end"){if(P.phase!=="done"&&P.i>0&&!P.confirmEnd){P.confirmEnd=true;renderPilot();setTimeout(()=>{if(S.pilot===P){P.confirmEnd=false;renderPilot()}},3000);return}endPilot();return}
+  if(a==="p-mute"){P.mute=!P.mute;if(P.mute&&S.tts)try{S.tts.stop()}catch(e){}}
+  else if(a==="p-say"){say(stepLine(st))}
+  else if(a==="p-rpe"){P.rpe[st.it.id]=+ds.v}
+  else if(a==="p-load"){const e=EX[st.it.id],inc=P.loc==="hotel"?(e.hinc||5):(e.inc||5);P.load[st.it.id]=Math.max(0,(P.load[st.it.id]||0)+inc*(+ds.n))}
+  else if(a==="p-skip"&&P.phase==="rest"){P.phase="work";say(stepLine(st))}
+  else if(a==="p-back"&&P.i>0){P.i--;P.phase="work";say(stepLine(P.steps[P.i],true))}
+  else if(a==="p-done"&&P.phase==="work"){
+    if(st.r===st.n)logPilotItem(st.it);P.i++;buzz(40);
+    if(P.i>=P.steps.length){P.phase="done";const min=Math.round((Date.now()-P.t0)/60000);say(`Session complete. ${min} minutes. Everything's logged. Get your protein in within the next hour.`);if(P.wake)P.wake.release().catch(()=>{})}
+    else if(st.rest>0){P.phase="rest";P.restTotal=st.rest;P.restEnd=Date.now()+st.rest*1000;P.left=st.rest;say(`Rest ${st.rest>=60&&st.rest%60===0?st.rest/60+" minute"+(st.rest>60?"s":""):st.rest+" seconds"}. Next: ${stepLine(P.steps[P.i],true)}`)}
+    else say(stepLine(P.steps[P.i]));
+  }
+  renderPilot();
+}
+setInterval(()=>{const P=S.pilot;if(!P)return;const el=$("#plClock");if(el){const s=Math.floor((Date.now()-P.t0)/1000);el.textContent=pad(Math.floor(s/60))+":"+pad(s%60)}
+  if(P.phase!=="rest")return;const left=Math.max(0,Math.ceil((P.restEnd-Date.now())/1000));if(left===P.left)return;P.left=left;
+  if(left===10&&P.restTotal>=30)say("Ten seconds.");
+  if(left===0){P.phase="work";buzz([200,100,200]);say("Go. "+stepLine(P.steps[P.i],true))}
+  renderPilot()},250);
+function renderPilot(){
+  const el=$("#pilot"),P=S.pilot;if(!P){el.hidden=true;el.innerHTML="";document.body.style.overflow="";return}el.hidden=false;document.body.style.overflow="hidden";
+  const top=`<div class="row between"><span class="eyebrow">W${P.w} · ${P.d===5?"Recovery":"Day "+P.d} · ${P.loc==="hotel"?"Hotel":"Gym"} · <span class="mono" id="plClock">00:00</span></span><div class="row">${S.tts?`<button class="seg" data-act="p-mute" aria-pressed="${P.mute}">${P.mute?"Muted":"Voice on"}</button>`:""}<button class="seg ghost" data-act="p-end">${P.confirmEnd?"Tap again to end":"End"}</button></div></div>
+   <div class="bar"><i style="width:${Math.round(P.i/P.steps.length*100)}%"></i></div>`;
+  if(P.phase==="done"){el.innerHTML=`<div class="pl">${top}<span class="stamp">Session logged</span><div class="pl-ex">Nice work.</div><p class="muted" style="margin:0">${Math.round((Date.now()-P.t0)/60000)} min. Loads and RPEs went into your log, so next session's suggestions already adjusted.</p><button class="primary pl-done" data-act="p-end">Close</button></div>`;return}
+  const st=P.steps[P.i],e=EX[st.it.id],R=rx(P.w,P.d,st.it),sg=P.sg[st.it.id],lb=P.load[st.it.id],nm=P.loc==="hotel"?e.h:e.n,nx=P.steps[P.i+1];
+  const loadUI=!["time","bw"].includes(sg.u)&&st.it.role!=="warm"?`<div class="row"><button class="seg" data-act="p-load" data-n="-1" aria-label="Less weight">−</button><span class="pl-big">${esc(fmtLoad(lb,sg.u))}</span><button class="seg" data-act="p-load" data-n="1" aria-label="More weight">+</button></div>`:"";
+  if(P.phase==="rest"){const C=2*Math.PI*70,frac=P.left/P.restTotal;
+    el.innerHTML=`<div class="pl">${top}<div class="eyebrow">Rest</div><div class="ring"><svg width="170" height="170" viewBox="0 0 170 170" aria-hidden="true"><circle cx="85" cy="85" r="70" fill="none" stroke="var(--line)" stroke-width="10"/><circle cx="85" cy="85" r="70" fill="none" stroke="var(--blue)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-frac)}" transform="rotate(-90 85 85)"/></svg><b>${P.left}</b></div>
+     <div class="panel"><div class="eyebrow">Up next · ${st.it.slot||"Prep"}${st.n>1?" · set "+st.r+"/"+st.n:""}</div><h3>${esc(nm)}</h3><div class="row muted">${esc(R.reps)}${lb&&!["time","bw"].includes(sg.u)?" · "+esc(fmtLoad(lb,sg.u)):""}</div></div>
+     <div class="row"><button class="primary pl-done" data-act="p-skip">Skip rest</button></div></div>`;return}
+  const lastSet=st.r===st.n&&st.it.role!=="warm"&&!["time"].includes(sg.u);
+  el.innerHTML=`<div class="pl">${top}
+   <div class="eyebrow">${st.it.slot?st.it.slot+" · ":""}${st.it.role==="warm"?"Prep":"Set "+st.r+" of "+st.n}${P.trim?" · yellow day: cap RPE 7":""}</div>
+   <div class="pl-ex">${esc(nm)}</div>
+   <div class="row"><span class="pl-big">${esc(R.reps)}</span>${R.rpe&&R.rpe!=="—"?`<span class="pill blue">RPE ${esc(R.rpe)}</span>`:""}</div>
+   ${loadUI}${sg.cap?`<div class="cue" style="border-color:var(--warn)">${esc(sg.cap)}</div>`:""}<div class="cue">${esc(e.cue)}</div><a class="demo" href="${demoURL(nm)}" target="_blank" rel="noopener" style="align-self:flex-start">▶ Watch demo</a>
+   ${lastSet?`<div class="row" role="group" aria-label="How hard was this exercise (RPE)"><span class="small muted">Last set · RPE</span>${[6,7,8,9,10].map(v=>`<button class="seg" data-act="p-rpe" data-v="${v}" aria-pressed="${P.rpe[st.it.id]===v}">${v}</button>`).join("")}</div>`:""}
+   <button class="primary pl-done" data-act="p-done">${st.it.role==="warm"?"Warm-up done":"Set done"}</button>
+   <div class="row between"><button class="ghost" data-act="p-back" ${P.i?"":"disabled"}>‹ Back</button>${S.tts?`<button class="ghost" data-act="p-say">Repeat</button>`:""}<span class="small muted">${nx?"Next: "+esc(P.loc==="hotel"?EX[nx.it.id].h:EX[nx.it.id].n):"Last one"}</span></div></div>`;
+}
+
 /* ================= BOOT ================= */
 async function boot(){
   lsLoad();S.offline=true;render();
   if(!window.claude||!window.claude.use){return}
-  const [db,sample,dict,dl]=await Promise.all(["db","sample","dictation","downloads"].map(n=>window.claude.use(n).catch(()=>null)));
-  S.sample=sample;S.dict=dict;S.dl=dl;
-  if(sample){try{const l=await sample.limits();S.images=!!l.images}catch(e){}}
-  if(dict){dict.onFinal(({text})=>{const t=$("#mealText");if(t){t.value=(t.value?t.value+" ":"")+text;S.draftMeal={...(S.draftMeal||{}),text:t.value}}});dict.onState(({state})=>{S.busy.dict=state==="listening"||state==="starting";const m=$("#micBtn");if(m)m.textContent=S.busy.dict?"Stop dictation":"Dictate"})}
+  const [db,sample,dict,dl,tts]=await Promise.all(["db","sample","dictation","downloads","tts"].map(n=>window.claude.use(n).catch(()=>null)));
+  S.sample=sample;S.dict=dict;S.dl=dl;S.tts=tts;
+  if(sample){try{const l=await sample.limits();S.images=!!l.images;S.toolMax=l.tools?l.tools.maxCount:0}catch(e){}}
+  if(dict){dict.onFinal(({text})=>{const t=$(S.dictTarget==="coachQ"?"#coachQ":"#mealText");if(t){t.value=(t.value?t.value+" ":"")+text;if(t.id==="mealText")S.draftMeal={...(S.draftMeal||{}),text:t.value}}});dict.onState(({state})=>{S.busy.dict=state==="listening"||state==="starting";const m=$("#micBtn");if(m)m.textContent=S.busy.dict?"Stop dictation":"Dictate"})}
   if(db){const localSeed={logs:S.logs,days:S.days,settings:S.settings};S.db=db;S.offline=false;let first=0;const timer=setTimeout(()=>{if(first<3)toast("Still loading your data…")},10000);const mark=()=>{first++;if(first>=3)clearTimeout(timer);render()};
     let f1=false,f2=false,f3=false;
     db.collection("log").onSnapshot(s=>{if(!f1&&!s.docs.length)for(const k in localSeed.logs)save("log/"+k,localSeed.logs[k]);S.logs={};s.docs.forEach(x=>S.logs[x.id]=x.data());for(const p in pendingData)if(p.startsWith("log/"))S.logs[p.slice(4)]=pendingData[p];if(!f1){f1=true;mark()}else render()},()=>{});
