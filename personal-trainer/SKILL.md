@@ -27,7 +27,7 @@ Read and write its database with the `ArtifactData` tool, using that URL. Read a
 |---|---|
 | `settings/profile` | `{start:"YYYY-MM-DD", trips:[{id,start,end,label,src}], autoTravel:true, age, heightCm, startLb, goalLb, sex, loc:"gym"\|"hotel", hotelMax, deficit, protein, fat, neat, blocksDone:{}, calib:{exId: lb, exId_h: lb}}` |
 | `days/<YYYY-MM-DD>` | `{date, weight, bodyFat, activeKcal, restingKcal, steps, hrv, rhr, sleepH, recovery, meals:[...], acts:[...], workouts:[...]}` |
-| `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt, swaps:{fromExId:toExId}}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
+| `log/w<week>d<day>` | `{w, d, loc, tier:{key,label,score,loadF,...}, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt, swaps:{fromExId:toExId}}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
 
 Meal entry: `{id, t:"12:30 PM", name, kcal, p, c, f, src:"claude-chat", items:["food (portion)", ...]}`.
 Activity entry: `{id, type:"hockey"|"golfwalk"|"golfcart"|"range"|"z2"|"walk"|"strength", min}`.
@@ -45,7 +45,7 @@ Use random 7-character ids. Use Ben's local date (Mountain Time, America/Edmonto
 Update `days/<date>.weight` (lb, 1 decimal). Comment on the **trend**, not the daily number (EMA α=0.1 over recent weigh-ins). The target rate is −0.6 to −1.0 lb/week. If he loses faster than 1.2 lb/week for two weeks, add 150 kcal back. If the trend is flat for 3 weeks, cut 150 kcal or add 2,000 steps a day.
 
 ### 3. "What am I training today?"
-Read `settings/profile` and `log/*`. Week = floor((today − start)/7) + 1, clamped to 1–16. Give the next incomplete day for that week from [references/program.md](references/program.md), with loads for his location. Factor in readiness: Athlytic recovery ≥67 = green, 34–66 = yellow (drop the last set and cap at RPE 7), <34 = red (do the day-5 recovery session).
+Read `settings/profile` and `log/*`. Week = floor((today − start)/7) + 1, clamped to 1–16. Give the next incomplete day for that week from [references/program.md](references/program.md), with loads for his location. Adjust for Athlytic recovery (same tiers as the app): 85+ Primed (+2.5% load, +1 main set), 67–84 Green (as written), 50–66 Yellow (−5%, RPE ≤7.5), 34–49 Low yellow (−10%, drop the last set of each superset, RPE ≤7, Zone 2 instead of intervals), <34 Red (do the D5 recovery session, or 2 sets at −20%, RPE 6). Three days under 50% in a row: move the deload to this week (`settings/profile.deloadMap = {blockIndex: week}`). To log his recovery, write `days/<date>.recovery`.
 
 ### 4. Logging a finished session
 For each exercise in `log/w<W>d<D>`, write `sets` (one entry per set: done, load, reps), then `done:true` when all sets are done, `load` = heaviest completed set, and the `rpe` of the last set. When everything is done, set `completedAt`. Progression rule for the next session: RPE ≤7.5 adds one increment (10 lb barbell lower body, 5 lb otherwise), RPE 8–9 holds, and RPE ≥9.5 drops the load 5%. At a block change, the load carries over, scaled by the ratio of the block factors.

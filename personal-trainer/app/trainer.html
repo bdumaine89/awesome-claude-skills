@@ -161,6 +161,8 @@ ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .fig .fx-head{fill:var(--ink)}.fig .fx-prop{fill:var(--red)}.fig .fx-cable{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:3 3}
 .fig .fx-ground{stroke:var(--line);stroke-width:2}.fig .fx-env{fill:var(--line)}.fig .fx-envl{fill:none;stroke:var(--line);stroke-width:3}
 .plfig{display:flex;justify-content:center}
+.recov{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:var(--chip);border-left:4px solid var(--line)}
+.recov.go{border-left-color:var(--go)}.recov.warn{border-left-color:var(--warn)}.recov.stop{border-left-color:var(--stop)}
 .extools .fig{order:-1}
 
 /* voice-guided session ("Pilot") */
@@ -304,7 +306,7 @@ function saveDay(d,doc){doc.date=d;doc.meals=doc.meals||[];doc.acts=doc.acts||[]
 /* ================= PROGRAM LOGIC ================= */
 function curWeek(){const diff=Math.round((parseD(today())-parseD(S.settings.start))/86400000);return clamp(Math.floor(diff/7)+1,1,16)}
 const blockOf=w=>BLOCKS.findIndex(b=>w>=b.w[0]&&w<=b.w[1]);
-const isDeload=w=>w===4||w===8||w===12;
+const isDeload=w=>{const m=(typeof S!=="undefined"&&S.settings.deloadMap)||{},b=blockOf(w);return m[b]!=null?m[b]===w:(w===4||w===8||w===12)};
 const isTest=w=>w===16;
 function dayPlan(w,d){const b=BLOCKS[blockOf(w)];return d===5?RECOVERY_DAY:b.days[d-1]}
 const logKey=(w,d)=>"w"+w+"d"+d;
@@ -314,7 +316,30 @@ function sessionItems(w,d){
   p.ss.forEach((s,i)=>{const tag="ABC"[i];items.push(mk(s[0],s[1],tag,"1"),mk(s[2],s[3],tag,"2"))});
   return items;
 }
+/* ===== Recovery autoregulation (Athlytic recovery % → today's session) ===== */
+const TIERS=[
+ {key:"prime",min:85,label:"Primed",cls:"go",loadF:1.025,mainSets:1,rpeCap:null,note:"Loads +2.5% and one bonus set on the main lift if time allows. Push the top of the rep range."},
+ {key:"green",min:67,label:"Green",cls:"go",loadF:1,mainSets:0,rpeCap:null,note:"Train as written."},
+ {key:"yhigh",min:50,label:"Yellow",cls:"warn",loadF:0.95,mainSets:0,rpeCap:7.5,note:"Loads −5% and effort capped at RPE 7.5. All sets stay."},
+ {key:"ylow",min:34,label:"Low yellow",cls:"warn",loadF:0.9,dropLast:true,rpeCap:7,easyCond:true,note:"Loads −10%, last set of each superset dropped, effort capped at RPE 7, and conditioning becomes easy Zone 2."},
+ {key:"red",min:0,label:"Red",cls:"stop",loadF:0.8,maxSets:2,rpeCap:6,easyCond:true,note:"Do the Recovery session. If you lift anyway: 2 sets per exercise, loads −20%, RPE 6, jumps are technique only."},
+];
+function tierOf(score){if(score==null)return null;return TIERS.find(t=>score>=t.min)}
+let _ct=null;
+function currentTier(){if(S.settings.autoReg===false)return null;const k=today()+"|"+JSON.stringify(dayDoc(today()).recovery??"")+"|"+Object.keys(S.days).length;if(_ct&&_ct.k===k&&Date.now()-_ct.t<2000)return _ct.v;const R=readiness(today());const v=R&&R.score!=null?{...tierOf(R.score),score:R.score,src:R.src}:null;_ct={k,t:Date.now(),v};return v}
+function tierFor(w,d){if(S.settings.autoReg===false||d===5)return null;const L=S.logs[logKey(w,d)];if(L&&L.tier)return L.tier;if(L&&L.completedAt)return null;if(w!==curWeek())return null;return currentTier()}
 function rx(w,d,it){
+  const r=rxBase(w,d,it),T=tierFor(w,d);if(!T||it.role==="warm")return r;
+  if(isDeload(w)&&T.key!=="red")return r;
+  if(T.mainSets&&it.role==="main")r.sets+=T.mainSets;
+  if(T.dropLast&&r.sets>1&&it.role!=="cond")r.sets-=1;
+  if(T.maxSets)r.sets=Math.min(r.sets,it.role==="power"?1:T.maxSets);
+  if(T.rpeCap&&r.rpe&&!isNaN(parseFloat(r.rpe))&&parseFloat(r.rpe)>T.rpeCap)r.rpe=String(T.rpeCap);
+  if(T.key==="red"&&it.role==="power")r.reps="2 (technique only)";
+  if(T.easyCond&&it.role==="cond")r.reps="12 min easy Zone 2",r.rpe="5";
+  return r;
+}
+function rxBase(w,d,it){
   const b=BLOCKS[blockOf(w)],e=EX[it.id];
   if(it.role==="warm")return {sets:1,reps:e.reps,rpe:"",rest:""};
   const sc=b.s[it.role]||b.s.acc;let sets=sc.sets,reps=sc.reps,rpe=sc.rpe;
@@ -346,6 +371,13 @@ function lastLog(exId,loc,w,d){
   return best;
 }
 function suggest(w,d,it,loc){
+  const sg=suggestBase(w,d,it,loc),T=tierFor(w,d);
+  if(!T||!sg.lb||T.loadF===1||(isDeload(w)&&T.key!=="red"))return sg;
+  const e=EX[it.id],hotel=loc==="hotel",step=sg.u==="bb"?5:(sg.u==="mb"?2:(e.hinc===2.5&&hotel?2.5:5));
+  let lb=Math.max(step,r5(sg.lb*T.loadF,step));if(sg.cap&&lb>S.settings.hotelMax)lb=S.settings.hotelMax;
+  return {...sg,lb,text:fmtLoad(lb,sg.u),why:(sg.why&&sg.why!=="plan"?sg.why+" · ":"")+"recovery "+(T.loadF>1?"+":"−")+Math.round(Math.abs(1-T.loadF)*1000)/10+"%"};
+}
+function suggestBase(w,d,it,loc){
   const e=EX[it.id];const hotel=loc==="hotel";const u=unitInfo(e,hotel);
   if(["time","bw"].includes(u)||it.role==="warm")return {u,lb:0,text:fmtLoad(0,u),why:""};
   const b=blockOf(w);const base=(S.settings.calib[it.id+(hotel?"_h":"")])||(hotel?e.hl:e.g)||0;
@@ -353,6 +385,7 @@ function suggest(w,d,it,loc){
   const step=(u==="bb")?5:(u==="mb"?2:(e.hinc===2.5&&hotel?2.5:5));
   let lb=r5(base*f,step),why="plan";
   const L=lastLog(it.id,loc,w,d);
+  if(L){const lt=(S.logs[logKey(L.w,L.d)]||{}).tier;if(lt&&lt.loadF&&lt.loadF!==1&&!isDeload(L.w))L.load=r5(L.load/lt.loadF,step)}
   if(L&&L.block===b&&!isDeload(L.w)){
     const inc=hotel?(e.hinc||5):(e.inc||5);const rpe=+L.rpe||8;
     let n=L.load;if(!L.rpe)n=Math.max(lb,L.load);else if(rpe<=7.5)n+=inc;else if(rpe>=9.5)n=r5(L.load*0.95,step);
@@ -435,10 +468,22 @@ function readiness(d){
   const zh=clamp((r3.reduce((a,b)=>a+b,0)/r3.length-H.m)/H.sd,-2,2),zr=D.rhr&&R?clamp((D.rhr-R.m)/R.sd,-2,2):0;const sl=D.sleepH?clamp((D.sleepH-5)/3,0,1):0.5;
   return {score:Math.round(clamp(55+16*zh-10*zr+30*(sl-0.5),1,99)),src:"HRV / RHR / sleep model"};
 }
-function readinessBand(r){if(!r||r.score==null)return {cls:"",label:"No data",advice:"Log your Athlytic recovery % or import Apple Health to get a readiness call."};
-  if(r.score>=67)return {cls:"go",label:"Green · "+r.score,advice:"Train as written. Push the top of the rep range."};
-  if(r.score>=34)return {cls:"warn",label:"Yellow · "+r.score,advice:"Train, but drop the last set of each superset and cap effort at RPE 7."};
-  return {cls:"stop",label:"Red · "+r.score,advice:"Swap today for the Recovery session (Zone 2 + mobility). Protect sleep tonight."}}
+function readinessBand(r){if(!r||r.score==null)return {cls:"",label:"No data",advice:"Enter today's Athlytic recovery % and your session adjusts itself."};
+  const T=tierOf(r.score),red=T.key==="red";
+  return {cls:T.cls,label:T.label+" · "+r.score,advice:(S.settings.autoReg===false?"Auto-adjust is off. ":"")+(red?"Swap today for the Recovery session (Zone 2 + mobility) and protect sleep tonight. If you lift anyway, it's 2 sets, −20%, RPE 6.":T.note)}}
+function lowStreak(){let n=0;for(let i=0;i<3;i++){const r=readiness(addDays(today(),-i));if(r&&r.score!=null&&r.score<50)n++;else break}return n}
+function recoveryCard(w,d){
+  const T=tierFor(w,d),L=S.logs[logKey(w,d)]||{},cur=currentTier(),dl=isDeload(w);
+  if(d===5)return "";
+  const on=S.settings.autoReg!==false;
+  let h=`<div class="recov ${T?T.cls:""}"><div class="row between"><div><div class="eyebrow">Recovery adjustment${T&&T.src?" · "+esc(T.src==="Athlytic"?"Athlytic":"estimated"):""}</div>
+   <b>${!on?"Off · training as written":T?esc(T.label)+" · "+T.score+"%":w!==curWeek()?"Applies to this week's sessions":"Enter today's Athlytic recovery % to adjust this session"}</b></div>
+   <label class="row small" style="gap:6px"><input type="checkbox" data-act="autoreg" ${on?"checked":""} style="width:22px;height:22px;min-height:0"> Auto-adjust</label></div>`;
+  if(on&&T)h+=`<p class="small" style="margin:0">${esc(dl&&T.key!=="red"?"Deload week: loads and sets are already reduced, so recovery doesn't change them further.":T.note)}</p>`;
+  if(on&&L.tier&&cur&&L.tier.key!==cur.key&&!L.completedAt)h+=`<div class="row small"><span>Locked to ${esc(L.tier.label)} (${L.tier.score}) when you started. Today's reading is ${esc(cur.label)} (${cur.score}).</span><button class="seg" data-act="retier" data-w="${w}" data-d="${d}">Use today's</button></div>`;
+  if(on&&T&&T.key==="red")h+=`<div class="row"><button class="primary seg" data-act="open" data-w="${w}" data-d="5">Do the Recovery session</button></div>`;
+  return h+`</div>`;
+}
 
 /* ================= RENDER ================= */
 const ROUTES=["today","program","fuel","body","sync","coach"];
@@ -474,7 +519,7 @@ function vProgram(){
   let html=`<section class="panel" id="session">
    <div class="row between"><div><div class="eyebrow">Week ${w} · Block ${bi+1} ${esc(B.n)}${isDeload(w)?" · Deload: −1 set, −15% load, RPE 6":""}${isTest(w)?" · Test week: last set of each main lift is AMRAP":""}</div>
    <h2>${d===5?esc(p.n):"Day "+d+" · "+esc(p.n)}</h2></div><span class="pill ${pr.done===pr.total?"go":"blue"}">${pr.done}/${pr.total}</span></div>
-   <p class="muted small" style="margin:0">${esc(B.goal)}</p>
+   <p class="muted small" style="margin:0">${esc(B.goal)}</p>${recoveryCard(w,d)}
    <div class="row between">${sessLoc(loc)}<div class="row" role="group" aria-label="Day">${[1,2,3,4,5].map(x=>`<button class="seg" data-act="open" data-w="${w}" data-d="${x}" aria-pressed="${x===d}">${x===5?"Rec":"D"+x}</button>`).join("")}</div></div>
    <div class="clockbar"><div><div class="eyebrow">Session clock</div><div class="clock" id="clock" role="timer" aria-label="Session time left">30:00</div></div>
      <div class="row" style="gap:6px;flex-wrap:nowrap"><button class="blue" data-act="p-start" data-w="${w}" data-d="${d}">${S.tts?"Voice":"Guided"}</button><button data-act="clock" aria-pressed="${clock.run}">${clock.run?"Pause":"Start"}</button><button data-act="rest" data-s="${restSecs(B.s.main.rest)}">Rest ${restSecs(B.s.main.rest)}s</button></div></div>
@@ -713,6 +758,7 @@ function vToday(){
   const nextTrip=trips().filter(x=>x.start>t).sort((a,b)=>a.start<b.start?-1:1)[0];
   return `
   ${trip?`<div class="roadbar"><b>On the road · ${esc(trip.label||"road trip")}</b><span>Day ${Math.round((parseD(t)-parseD(trip.start))/864e5)+1} of ${Math.round((parseD(trip.end)-parseD(trip.start))/864e5)+1} · hotel versions on${rw?" · road-week priority D1 → D3 → D2":""}</span></div>`:nextTrip&&nextTrip.start<=addDays(t,7)?`<div class="roadbar soon"><b>Road trip in ${Math.round((parseD(nextTrip.start)-parseD(t))/864e5)} days</b><span>${esc(nextTrip.label||"")} · get Day 1 and Day 3 done before you leave</span></div>`:""}
+  ${lowStreak()>=3&&S.settings.autoReg!==false&&!isDeload(ns.w)?`<div class="roadbar" style="background:var(--warn);color:var(--go-ink)"><b>Recovery under 50% three days running</b><span>Your body is asking for the deload now, not at week ${BLOCKS[blockOf(ns.w)].w[1]}.</span><div class="row" style="margin-top:6px"><button class="seg" data-act="deloadnow" data-w="${ns.w}">Make this week the deload</button></div></div>`:""}
   <section class="hero">
     <div class="hero-g">${arcGauge(R&&R.score,RB.cls)}<div class="eyebrow" style="text-align:center">Readiness${R&&R.src?" · "+esc(R.src):""}</div></div>
     <div class="hero-t"><div class="eyebrow">${esc(fmtD(t))} · Week ${ns.w}/16 · ${esc(BLOCKS[blockOf(ns.w)].n)}${isDeload(ns.w)?" · Deload":""}</div>
@@ -805,6 +851,7 @@ function contextSummary(){
   const pj=projection();if(pj)lines.push(`Weight trend ${pj.trend.toFixed(1)} lb, ${pj.perWk.toFixed(2)} lb/wk.`);
   const ns=nextSession();const p=dayPlan(ns.w,ns.d);lines.push(`Next session: W${ns.w} D${ns.d} ${p.n}: `+sessionItems(ns.w,ns.d).filter(i=>i.slot).map(i=>i.slot+" "+EX[i.id].n).join(", "));
   const sx=strengthSummary();if(sx)lines.push(sx);
+  {const T=currentTier();lines.push("Today's recovery tier: "+(T?T.label+" ("+T.score+"%): "+T.note:"no reading")+(S.settings.autoReg===false?" (auto-adjust OFF)":""))}
   lines.push(`Targets: ${targets(today()).kcal} kcal, ${S.settings.protein} g protein.`);
   return lines.join("\n");
 }
@@ -938,7 +985,7 @@ async function importFile(file){
 }
 
 /* ================= EVENTS ================= */
-function sessLog(w,d){const k=logKey(w,d);const L=S.logs[k]?JSON.parse(JSON.stringify(S.logs[k])):{w,d,ex:{},loc:defLoc()};L.ex=L.ex||{};return L}
+function sessLog(w,d){const k=logKey(w,d);const L=S.logs[k]?JSON.parse(JSON.stringify(S.logs[k])):{w,d,ex:{},loc:defLoc()};L.ex=L.ex||{};if(!L.tier&&!L.completedAt&&d!==5&&w===curWeek()){const T=currentTier();if(T)L.tier=T}return L}
 function afterTick(w,d,L){const items=sessionItems(w,d);const all=items.every(it=>L.ex[it.id]&&L.ex[it.id].done);if(all&&!L.completedAt){L.completedAt=new Date().toISOString();toast("Session complete. Nice work.");
   if(d<5){const t=today();const D={...dayDoc(t)};D.acts=[...(D.acts||[])];if(!Object.values(S.days).some(D0=>(D0.acts||[]).some(a=>a.sess===logKey(w,d)))){D.acts.push({id:uid(),type:"strength",min:30,sess:logKey(w,d)});saveDay(t,D)}}
   const b=blockOf(w);S.logs[logKey(w,d)]=L;const bp=blockProgress(b);if(bp.done===bp.total)toast("Block "+(b+1)+" complete!")} if(!all)delete L.completedAt}
@@ -951,6 +998,9 @@ setInterval(()=>{if(clock.run&&clock.left>0)clock.left--;if(clock.rest>0){clock.
 document.addEventListener("click",async ev=>{
   const b=ev.target.closest("[data-act]");if(!b||b.tagName==="INPUT"&&b.type!=="checkbox"||b.tagName==="SELECT")return;const a=b.dataset.act;const ds=b.dataset;
   if(a==="loc"){const s2={...S.settings,loc:ds.v};if(ds.v==="gym"&&tripOn(today())&&S.settings.autoTravel!==false){s2.autoTravel=false;toast("Auto hotel mode is off until you turn it back on.")}save("settings/profile",s2);render()}
+  else if(a==="autoreg"){save("settings/profile",{...S.settings,autoReg:b.checked});toast(b.checked?"Sessions adjust to your recovery":"Auto-adjust off · training as written");render()}
+  else if(a==="retier"){const w=+ds.w,d=+ds.d,L=sessLog(w,d),T=currentTier();if(T){L.tier=T;save("log/"+logKey(w,d),L);toast("Session re-planned for today's recovery")}render()}
+  else if(a==="deloadnow"){const w=+ds.w,b0=blockOf(w),m={...(S.settings.deloadMap||{})};m[b0]=w;save("settings/profile",{...S.settings,deloadMap:m});toast("Week "+w+" is now your deload. Week "+BLOCKS[b0].w[1]+" trains normally.");render()}
   else if(a==="autotravel"){save("settings/profile",{...S.settings,autoTravel:b.checked});render()}
   else if(a==="scancal"){scanCalendar()}
   else if(a==="tripadd"||a==="tripskip"){const t=(S.tripProposals||[])[+ds.i];S.tripProposals=(S.tripProposals||[]).filter((x,k)=>k!==+ds.i);if(t&&a==="tripadd"){save("settings/profile",{...S.settings,trips:[...trips(),{id:uid(),start:t.start,end:t.end,label:String(t.label||"Road trip").slice(0,40),src:"calendar"}]});toast("Trip added")}render()}
@@ -1010,7 +1060,7 @@ const sayLoad=(lb,u)=>fmtLoad(lb,u).replace("lb ×2","pound dumbbells").replace(
 function say(text){const P=S.pilot;if(!S.tts||!P||P.mute)return;S.tts.speak(text,{rate:1.08}).catch(e=>{if(e.code==="not_granted"){S.tts=null;renderPilot()}})}
 function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function buildPilot(w,d){
-  const L=S.logs[logKey(w,d)]||{},loc=L.loc||defLoc(),RB=readinessBand(readiness(today())),trim=RB.cls==="warn"&&!isDeload(w)&&d<5;
+  const L=S.logs[logKey(w,d)]||{},loc=L.loc||defLoc(),RB=readinessBand(readiness(today())),trim=false;
   const groups=[];sessionItems(w,d).forEach(it=>{let g=groups.find(x=>x.ss===it.ss);if(!g)groups.push(g={ss:it.ss,its:[]});g.its.push(it)});
   const done=id=>L.ex&&L.ex[id]&&L.ex[id].done;
   const P={w,d,loc,trim,i:0,phase:"work",steps:[],load:{},sg:{},rpe:{},t0:Date.now(),mute:false,wake:null};
@@ -1031,7 +1081,7 @@ function stepLine(st,short){
 async function startPilot(w,d){
   S.pilot=buildPilot(w,d);const P=S.pilot;if(!P.steps.length){S.pilot=null;toast("This session is already done.");return}
   try{if(navigator.wakeLock)P.wake=await navigator.wakeLock.request("screen")}catch(e){}
-  const p=dayPlan(w,d);say(`Week ${w}, ${d===5?p.n:"day "+d+", "+p.n}. ${P.loc==="hotel"?"Hotel version. ":""}${P.trim?"Readiness is yellow, so I've dropped the last round of each superset and we cap effort at R P E 7. ":""}${P.steps.length} sets. First up: ${stepLine(P.steps[0])}`);
+  const p=dayPlan(w,d);say(`Week ${w}, ${d===5?p.n:"day "+d+", "+p.n}. ${P.loc==="hotel"?"Hotel version. ":""}${(()=>{const T=tierFor(w,d);return T&&T.key!=="green"?"Recovery is "+T.score+", "+T.label+". "+T.note.replace(/RPE/g,"R P E").replace(/−/g,"minus ").replace(/\+/g,"plus ")+" ":""})()}${P.steps.length} sets. First up: ${stepLine(P.steps[0])}`);
   renderPilot();
 }
 function logPilotItem(it){

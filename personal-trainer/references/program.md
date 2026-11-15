@@ -71,7 +71,20 @@ No resistance bands anywhere in the program: every hotel swap uses dumbbells, a 
 - **Rec hockey counts as D4's conditioning.** Skip the bike intervals on weeks with 2 or more games.
 - **Week 16 test:** work up to a top set of 3–5 reps at RPE 9 on squat, trap-bar deadlift and pull-up, then estimate 1RM (Epley).
 
-## Autoregulation
-- **Readiness** (Athlytic recovery %, or the app's HRV/RHR/sleep model): green ≥67 train as written; yellow 34–66 drop the last round and cap at RPE 7; red <34 do D5 instead.
+## Autoregulation (Athlytic recovery % → today's session)
+Enter Athlytic's recovery % each morning. The current week's sessions adjust automatically. The tier is locked when you start a session, so a mid-session reading doesn't change it.
+
+| Recovery | Tier | Loads | Sets | Effort | Conditioning |
+|---|---|---|---|---|---|
+| 85–100 | Primed | +2.5% | +1 bonus set on the main lift (if time allows) | as written | as written |
+| 67–84 | Green | as written | as written | as written | as written |
+| 50–66 | Yellow | −5% | as written | cap RPE 7.5 | as written |
+| 34–49 | Low yellow | −10% | drop the last set of each superset | cap RPE 7 | 12 min easy Zone 2 |
+| 0–33 | Red | −20% | max 2 (power 1, technique only) | RPE 6 | Zone 2. **Recommended: do the D5 Recovery session instead.** |
+
+- Deload weeks aren't reduced further, except on red.
+- Loads lifted on adjusted days are normalized back before computing the next session's progression, so a low day doesn't drag your numbers down.
+- **Three days in a row under 50%:** move the deload to the current week ("Make this week the deload"). The block's scheduled deload week then trains normally.
+- No Athlytic number: the app estimates readiness from HRV (log-scaled, 3-day mean), resting HR and sleep against a 30-day baseline.
 - **Game day (rec hockey):** a D1/D3 lower session is fine in the morning if the game is in the evening, but skip the jumps. No lower session the morning after a late game; move D4 instead.
 - **Golf day:** do rotation work (D2) at least 24 h before a round, not the same morning.
