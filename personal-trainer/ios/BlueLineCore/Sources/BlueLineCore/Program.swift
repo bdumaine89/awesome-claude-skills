@@ -57,6 +57,10 @@ public struct Prescription: Sendable, Hashable {
     /// Week 16: last set of each main lift is AMRAP at the week-1 load.
     public var amrapLastSet: Bool = false
 
+    public init(sets: Int, reps: String, rpe: String, rest: String, amrapLastSet: Bool = false) {
+        self.sets = sets; self.reps = reps; self.rpe = rpe; self.rest = rest; self.amrapLastSet = amrapLastSet
+    }
+
     /// Rest in seconds ("full" → 90; unparsable → 60), as in the guided mode.
     public var restSeconds: Int {
         if rest.range(of: "full", options: .caseInsensitive) != nil { return 90 }

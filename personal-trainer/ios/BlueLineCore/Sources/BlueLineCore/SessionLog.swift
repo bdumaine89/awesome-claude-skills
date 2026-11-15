@@ -80,10 +80,9 @@ public struct SessionLog: Codable, Hashable, Sendable {
     /// Mark an item without set rows (warm-up, timed work) done or not.
     public mutating func setDone(_ exercise: String, _ done: Bool, count: Int = 1) {
         var e = ex[exercise] ?? ExerciseEntry()
-        e.ensureSets(count)
+        e.ensureSets(max(count, e.sets.count))
         for i in e.sets.indices { e.sets[i].done = done }
         e.sync()
-        if e.sets.isEmpty { e.done = done }
         ex[exercise] = e
         refreshCompletion()
     }
