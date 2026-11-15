@@ -25,7 +25,7 @@ Load progression within a block: about +3% a week (wk1 → wk3), then deload. At
 | **D2 Pull + Rotation** | A: Lat Pulldown + Woodchop · B: Chest-Supported Row + Landmine Press · C: MB Scoop Toss + 90/90 Hip IR Lift-off | A: **Pull-up** + Woodchop · rest same | A: Pull-up + **MB Scoop Toss** · B: CS Row + Landmine · C: Woodchop + Face Pull | A: Pulldown + Cable Lift · B: 1-Arm Cable Row + Landmine · C: MB Toss + 90/90 Hip IR |
 | **D3 Lower · Hip + Push** | A: RDL + Dead Bug · B: Lateral Lunge + Incline DB · C: Hip Thrust + Face Pull | A: **Trap-Bar DL** + Dead Bug · B: SL-RDL + Incline DB · C: Hip Thrust + Face Pull | A: Trap-Bar DL + **Broad Jump** · B: SL-RDL + Incline DB · C: Hip Thrust + Push-up | A: Trap-Bar DL + Dead Bug · B: Lateral Lunge + Push-up · C: Hip Thrust + Face Pull |
 | **D4 Athletic + Conditioning** | A: Box Jump + Skater Bound · B: SL-RDL + 1-Arm Cable Row · C: Suitcase Carry + Bike 6×30/45 | A: Broad Jump + Skater · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Skater + MB Slam · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Box Jump + Skater · B: SL-RDL + CS Row · C: Carry + Bike |
-| D5 Recovery | Zone 2 for 25 min at HR 125–140 + 5 min mobility flow. The default on hockey-free weeks; required on red-readiness days. | | | |
+| D5 Recovery | Zone 2 for 25 min at HR 110–128 (top of his Athlytic Zone 2 of 102–118, into low Zone 3; talk-test pace) + 5 min mobility flow. The default on hockey-free weeks; required on red-readiness days. | | | |
 
 Warm-up (5 min): 90/90 switches, world's greatest stretch, hip airplanes, prone Y-T raises (no weight), neck 4-way isometrics, pogo hops, then 2 ramp-up sets of A1.
 
@@ -82,6 +82,8 @@ Enter Athlytic's recovery % each morning. The current week's sessions adjust aut
 | 34–49 | Low yellow | −10% | drop the last set of each superset | cap RPE 7 | 12 min easy Zone 2 |
 | 0–33 | Red | −20% | max 2 (power 1, technique only) | RPE 6 | Zone 2. **Recommended: do the D5 Recovery session instead.** |
 
+- **Personal baseline (default once 7+ days are logged):** the cut-offs follow the median of his last 30 days of recovery, the way Athlytic scores relative to its own baseline. Primed ≥ max(85, median+25), Green ≥ median−5 (40–67), Yellow ≥ median−15 (34–55), Low yellow ≥ 34, Red < 34. With his Nov 9–15 data (median 55): Green ≥ 50, Yellow 40–49.
+- **Athlytic load ratio** (optional daily entry): > 1.4 moves one tier more conservative; > 1.3 removes the Primed bonus set.
 - Deload weeks aren't reduced further, except on red.
 - Loads lifted on adjusted days are normalized back before computing the next session's progression, so a low day doesn't drag your numbers down.
 - **Three days in a row under 50%:** move the deload to the current week ("Make this week the deload"). The block's scheduled deload week then trains normally.

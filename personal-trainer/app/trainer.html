@@ -225,7 +225,7 @@ const EX={
  sideplank:{n:"Side Plank with Reach-Through",h:"Side Plank with Reach-Through",u:"time",hu:"time",reps:"30 s/side",cue:"Stack hips, reach under and rotate."},
  carry:{n:"Suitcase Carry",h:"Suitcase Carry",u:"db1",hu:"db1",g:70,hl:50,inc:5,hinc:5,reps:"40 m/side",cue:"Stand tall, don't lean. Anti-lateral-flexion."},
  bike:{n:"Bike Intervals (Assault/Echo)",h:"Bike / Treadmill Incline Intervals",u:"time",hu:"time",reps:"6 × 30 s hard / 45 s easy",cue:"Shift-length efforts. Skip on weeks with 2+ hockey games; do D5 Zone 2 on hockey-free weeks. RPE 9 on the work, true easy on recovery."},
- z2:{n:"Zone 2 Cardio",h:"Zone 2 Cardio (bike/incline walk)",u:"time",hu:"time",reps:"25 min @ HR 125–140",cue:"Nasal breathing pace. Watch: Workout → Indoor Cycle, heart-rate zone 2 alert."},
+ z2:{n:"Zone 2 Cardio",h:"Zone 2 Cardio (bike/incline walk)",u:"time",hu:"time",reps:"25 min @ HR 110–128",cue:"Talk-test pace: full sentences, nasal breathing. Top of your Athlytic Zone 2 (102–118) into low Zone 3. Watch: Workout → Indoor Cycle, set a 110–128 heart-rate alert."},
  hipir:{n:"90/90 Hip IR Lift-off",h:"90/90 Hip IR Lift-off",u:"time",hu:"time",reps:"5 × 5 s/side",cue:"Sit 90/90, torso tall, lift the back knee and foot off the floor by internally rotating the back hip. Hold 5 s. Lead-hip IR for the golf downswing; hockey hips lose IR first."},
  mobflow:{n:"Mobility Flow",h:"Mobility Flow",u:"time",hu:"time",reps:"5 min",cue:"Couch stretch, 90/90, T-spine open-books, thread the needle."},
 };
@@ -324,9 +324,19 @@ const TIERS=[
  {key:"ylow",min:34,label:"Low yellow",cls:"warn",loadF:0.9,dropLast:true,rpeCap:7,easyCond:true,note:"Loads −10%, last set of each superset dropped, effort capped at RPE 7, and conditioning becomes easy Zone 2."},
  {key:"red",min:0,label:"Red",cls:"stop",loadF:0.8,maxSets:2,rpeCap:6,easyCond:true,note:"Do the Recovery session. If you lift anyway: 2 sets per exercise, loads −20%, RPE 6, jumps are technique only."},
 ];
-function tierOf(score){if(score==null)return null;return TIERS.find(t=>score>=t.min)}
+// Personal baseline: thresholds follow YOUR typical Athlytic recovery (like Athlytic's own baseline), not fixed 67/34 cut-offs.
+function recBaseline(){const v=[];for(let i=1;i<=30;i++){const x=S.days[addDays(today(),-i)];if(x&&x.recovery!=null&&x.recovery!=="")v.push(+x.recovery)}if(v.length<7)return null;v.sort((a,b)=>a-b);return {median:v[Math.floor(v.length/2)],n:v.length}}
+function tierCuts(){const B=recBaseline();if(!B)return {prime:85,green:67,yhigh:50,ylow:34,personal:false};const M=B.median;
+  return {prime:Math.max(85,M+25),green:clamp(M-5,40,67),yhigh:clamp(M-15,34,55),ylow:34,personal:true,median:M,n:B.n}}
+function tierOf(score){if(score==null)return null;const c=tierCuts();const key=score>=c.prime?"prime":score>=c.green?"green":score>=c.yhigh?"yhigh":score>=c.ylow?"ylow":"red";return TIERS.find(t=>t.key===key)}
+function loadRatioNow(){for(let i=0;i<3;i++){const x=S.days[addDays(today(),-i)];if(x&&x.loadRatio)return +x.loadRatio}return null}
+const TORDER=["prime","green","yhigh","ylow","red"];
 let _ct=null;
-function currentTier(){if(S.settings.autoReg===false)return null;const k=today()+"|"+JSON.stringify(dayDoc(today()).recovery??"")+"|"+Object.keys(S.days).length;if(_ct&&_ct.k===k&&Date.now()-_ct.t<2000)return _ct.v;const R=readiness(today());const v=R&&R.score!=null?{...tierOf(R.score),score:R.score,src:R.src}:null;_ct={k,t:Date.now(),v};return v}
+function currentTier(){if(S.settings.autoReg===false)return null;const k=today()+"|"+JSON.stringify(dayDoc(today()).recovery??"")+"|"+JSON.stringify(dayDoc(today()).loadRatio??"")+"|"+Object.keys(S.days).length;if(_ct&&_ct.k===k&&Date.now()-_ct.t<2000)return _ct.v;const R=readiness(today());let v=null;if(R&&R.score!=null){let T=tierOf(R.score);const lr=loadRatioNow();let why="";
+  if(lr&&lr>1.4&&T.key!=="red"){T=TIERS.find(t=>t.key===TORDER[TORDER.indexOf(T.key)+1]);why=" Load ratio "+lr+" is above 1.4, so it's one step more conservative."}
+  else if(lr&&lr>1.3&&T.key==="prime"){T=TIERS.find(t=>t.key==="green");why=" Load ratio "+lr+": no bonus set."}
+  const c=tierCuts();v={...T,note:T.note+why,score:R.score,src:R.src,cuts:c,ratio:lr}}
+  _ct={k,t:Date.now(),v};return v}
 function tierFor(w,d){if(S.settings.autoReg===false||d===5)return null;const L=S.logs[logKey(w,d)];if(L&&L.tier)return L.tier;if(L&&L.completedAt)return null;if(w!==curWeek())return null;return currentTier()}
 function rx(w,d,it){
   const r=rxBase(w,d,it),T=tierFor(w,d);if(!T||it.role==="warm")return r;
@@ -479,6 +489,7 @@ function recoveryCard(w,d){
   let h=`<div class="recov ${T?T.cls:""}"><div class="row between"><div><div class="eyebrow">Recovery adjustment${T&&T.src?" · "+esc(T.src==="Athlytic"?"Athlytic":"estimated"):""}</div>
    <b>${!on?"Off · training as written":T?esc(T.label)+" · "+T.score+"%":w!==curWeek()?"Applies to this week's sessions":"Enter today's Athlytic recovery % to adjust this session"}</b></div>
    <label class="row small" style="gap:6px"><input type="checkbox" data-act="autoreg" ${on?"checked":""} style="width:22px;height:22px;min-height:0"> Auto-adjust</label></div>`;
+  {const c=tierCuts();h+=`<div class="small muted">${c.personal?`Your baseline: ${c.median}% (median of ${c.n} days). Primed ≥${c.prime} · Green ≥${c.green} · Yellow ≥${c.yhigh} · Low ≥${c.ylow} · Red below.`:`Standard cut-offs until 7 days of Athlytic recovery are logged: Primed ≥85 · Green ≥67 · Yellow ≥50 · Low ≥34.`}</div>`}
   if(on&&T)h+=`<p class="small" style="margin:0">${esc(dl&&T.key!=="red"?"Deload week: loads and sets are already reduced, so recovery doesn't change them further.":T.note)}</p>`;
   if(on&&L.tier&&cur&&L.tier.key!==cur.key&&!L.completedAt)h+=`<div class="row small"><span>Locked to ${esc(L.tier.label)} (${L.tier.score}) when you started. Today's reading is ${esc(cur.label)} (${cur.score}).</span><button class="seg" data-act="retier" data-w="${w}" data-d="${d}">Use today's</button></div>`;
   if(on&&T&&T.key==="red")h+=`<div class="row"><button class="primary seg" data-act="open" data-w="${w}" data-d="5">Do the Recovery session</button></div>`;
@@ -612,7 +623,8 @@ function vBody(){
    <label class="f">Athlytic recovery %<input type="number" inputmode="numeric" data-act="dayfield" data-f="recovery" value="${D.recovery??""}"></label>
    <label class="f">HRV (ms)<input type="number" inputmode="numeric" data-act="dayfield" data-f="hrv" value="${D.hrv??""}"></label>
    <label class="f">Resting HR<input type="number" inputmode="numeric" data-act="dayfield" data-f="rhr" value="${D.rhr??""}"></label>
-   <label class="f">Sleep (h)<input type="number" step="0.1" inputmode="decimal" data-act="dayfield" data-f="sleepH" value="${D.sleepH??""}"></label></div>
+   <label class="f">Sleep (h)<input type="number" step="0.1" inputmode="decimal" data-act="dayfield" data-f="sleepH" value="${D.sleepH??""}"></label>
+   <label class="f">Athlytic load ratio<input type="number" step="0.1" inputmode="decimal" data-act="dayfield" data-f="loadRatio" value="${D.loadRatio??""}"></label></div>
    <p class="small muted" style="margin:0">If you enter Athlytic's number, it wins. Without it, readiness is estimated from HRV and resting HR against your own 30-day baseline, plus sleep.</p></section>
   <section class="panel"><h3>Profile</h3><div class="grid4">
    ${[["age","Age"],["heightCm","Height (cm)"],["startLb","Start weight (lb)"],["goalLb","Goal (lb)"],["deficit","Daily deficit (kcal)"],["protein","Protein (g)"],["fat","Fat (g)"],["neat","Activity multiplier"],["hotelMax","Hotel max DB (lb)"],["start","Program start (YYYY-MM-DD)"]].map(([k,l])=>`<label class="f">${l}<input data-act="setting" data-k="${k}" value="${esc(S.settings[k])}" ${k==="start"?'type="date"':'type="number" step="any" inputmode="decimal"'}></label>`).join("")}</div>
