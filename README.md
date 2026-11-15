@@ -120,7 +120,7 @@ Skills for working with complex file formats:
 | **[ffuf-web-fuzzing](https://github.com/jthack/ffuf_claude_skill)** | Expert guidance for ffuf web fuzzing during penetration testing, including authenticated fuzzing with raw requests, auto-calibration, and result analysis |
 | **[playwright-skill](https://github.com/lackeyjb/playwright-skill)** | General-purpose browser automation using Playwright |
 | **[claude-d3js-skill](https://github.com/chrisvoncsefalvay/claude-d3js-skill)** | Visualizations in d3.js |
-| **[claude-scientific-skills](https://github.com/K-Dense-AI/claude-scientific-skills)** | Comprehensive collection of ready-to-use scientific skills, including working with specialized scientific libraries and databases |
+| **[claude-scientific-skills](https://github.com/K-Dense-AI/scientific-agent-skills)** | Comprehensive collection of ready-to-use scientific skills, including working with specialized scientific libraries and databases |
 | **[web-asset-generator](https://github.com/alonw0/web-asset-generator)** | Generates web assets like favicons, app icons, and social media images |
 | **[loki-mode](https://github.com/asklokesh/claudeskill-loki-mode)** | Multi-agent autonomous startup system - orchestrates 37 AI agents across 6 swarms to build, deploy, and operate a complete startup from PRD to revenue |
 | **[Trail of Bits Security Skills](https://github.com/trailofbits/skills)** | Security skills for static analysis with CodeQL/Semgrep, variant analysis, code auditing, and vulnerability detection |
@@ -128,12 +128,18 @@ Skills for working with complex file formats:
 | **[Expo Skills](https://github.com/expo/skills)** | Official skills by the Expo team for developing Expo apps |
 | **[shadcn/ui](https://ui.shadcn.com/docs/skills)** | Give Claude Code context on shadcn components as well as pattern enforcement |
 | **[get-shit-done](https://github.com/gsd-build/get-shit-done)** | Lightweight meta-prompting, context engineering, and spec-driven development system for Claude Code by TÂCHES |
+| **[obsidian-skills](https://github.com/obsidianmd/obsidian-skills)** | Official skills from the Obsidian team for Obsidian Flavored Markdown, Bases, JSON Canvas, and the Obsidian CLI |
+| **[marketingskills](https://github.com/coreyhaines31/marketingskills)** | 40+ marketing skills covering CRO, copywriting, SEO, analytics, and growth engineering |
+| **[planning-with-files](https://github.com/OthmanAdi/planning-with-files)** | Persistent file-based planning (`task_plan.md`, `findings.md`, `progress.md`) that survives `/clear`, compaction, and crashes |
+| **[hallmark](https://github.com/Nutlope/hallmark)** | Anti-"AI slop" web design skill with 50 visual themes, a rendered-page linter, and `/hallmark audit` / `redesign` modes |
+| **[archify](https://github.com/tt-a1i/archify)** | Turn an idea, plan, or codebase into an interactive diagram |
 
 _More community skills coming soon! Submit a PR to add your skill._
 
 ### Tools
 
-- **[yusufkaraaslan/Skill_Seekers](https://github.com/yusufkaraaslan/Skill_Seekers)** - Convert documentation websites into Claude Skills
+- **[yusufkaraaslan/Skill_Seekers](https://github.com/yusufkaraaslan/Skill_Seekers)** - Convert documentation websites, GitHub repositories, and PDFs into Claude Skills
+- **[NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector)** - Security scanner for agent skills that flags prompt injection, data exfiltration, and supply-chain risks before you install them, with a static-only `--no-llm` mode
 
 ## ✏️ Creating Your First Skill
 
