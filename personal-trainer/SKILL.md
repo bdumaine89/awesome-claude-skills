@@ -27,7 +27,7 @@ Read and write its database with the `ArtifactData` tool, using that URL. Read a
 |---|---|
 | `settings/profile` | `{start:"YYYY-MM-DD", age, heightCm, startLb, goalLb, sex, loc:"gym"\|"hotel", hotelMax, deficit, protein, fat, neat, blocksDone:{}, calib:{exId: lb, exId_h: lb}}` |
 | `days/<YYYY-MM-DD>` | `{date, weight, bodyFat, activeKcal, restingKcal, steps, hrv, rhr, sleepH, recovery, meals:[...], acts:[...], workouts:[...]}` |
-| `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe}}, completedAt}` (day 5 = optional recovery session) |
+| `log/w<week>d<day>` | `{w, d, loc, ex:{exId:{done, load, rpe, sets:[{done, load, reps}]}}, completedAt}`: `load` = heaviest completed set and `done` = all sets done (day 5 = recovery session) |
 
 Meal entry: `{id, t:"12:30 PM", name, kcal, p, c, f, src:"claude-chat", items:["food (portion)", ...]}`.
 Activity entry: `{id, type:"hockey"|"golfwalk"|"golfcart"|"range"|"z2"|"walk"|"strength", min}`.
@@ -48,7 +48,7 @@ Update `days/<date>.weight` (lb, 1 decimal). Comment on the **trend**, not the d
 Read `settings/profile` and `log/*`. Week = floor((today − start)/7) + 1, clamped to 1–16. Give the next incomplete day for that week from [references/program.md](references/program.md), with loads for his location. Factor in readiness: Athlytic recovery ≥67 = green, 34–66 = yellow (drop the last set and cap at RPE 7), <34 = red (do the day-5 recovery session).
 
 ### 4. Logging a finished session
-Set `done:true` plus `load` and `rpe` for each exercise in `log/w<W>d<D>`. When everything is done, set `completedAt`. Progression rule for the next session: RPE ≤7.5 adds one increment (10 lb barbell lower body, 5 lb otherwise), RPE 8–9 holds, and RPE ≥9.5 drops the load 5%.
+For each exercise in `log/w<W>d<D>`, write `sets` (one entry per set: done, load, reps), then `done:true` when all sets are done, `load` = heaviest completed set, and the `rpe` of the last set. When everything is done, set `completedAt`. Progression rule for the next session: RPE ≤7.5 adds one increment (10 lb barbell lower body, 5 lb otherwise), RPE 8–9 holds, and RPE ≥9.5 drops the load 5%. At a block change, the load carries over, scaled by the ratio of the block factors.
 
 ### 5. Travel week
 Set `settings/profile.loc` to "hotel" and use the hotel column in the program reference. If a dumbbell exercise exceeds the hotel cap, swap the load for a 4 s eccentric or 1¼ reps. Don't drop the session.

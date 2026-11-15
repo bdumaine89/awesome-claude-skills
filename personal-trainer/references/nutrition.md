@@ -2,16 +2,17 @@
 
 ## Energy math
 - **BMR (Mifflin-St Jeor, male):** 10·kg + 6.25·cm − 5·age + 5. At 182 lb (82.6 kg), 172.7 cm and age 37 that’s ≈ **1,725 kcal**.
-- **Maintenance:** once 5+ days of Apple Health data exist, use the 14-day average of resting + active energy. Before that, use BMR × 1.3 (on his feet all day) + ~250 for training ≈ **2,500 kcal**.
-- **Target:** maintenance − 500 ≈ **2,000 kcal**, plus half of the day's hockey or golf burn. Floor of 1,800.
+- **Maintenance:** starts at BMR × 1.4 + ~250 ≈ **2,670 kcal** (uncertain; activity level is probably 1.5–1.7). With 5+ days of data, it uses the 14-day Apple Health average. From 14+ days with 10+ fully logged days and 8+ weigh-ins, it switches to an **adaptive TDEE**: mean logged intake − (median-based weight slope, lb/day × 3,500) over the last 21 days. It skips the first 10 days of the cut (water loss), and blends with the earlier estimate until 21 days are logged. This cancels out steady under-logging.
+- **Target:** maintenance − 500, plus ½ × (today's hockey/golf kcal − your average daily sport kcal). The baseline already includes your average sport, so this only shifts calories between days, with no double-counting. Floor of 1,800.
 - **Expected rate:** ~0.75–1.0 lb/week, so 182 → 170 takes ~12–16 weeks, matching the 16-week program. Water swings of ±2–3 lb from travel, sodium and games are normal, so judge the trend line.
-- **Watch accuracy:** Apple Watch active energy is commonly cited as overestimating by about 10–20%, and more for hockey (stop-start, arm motion). The "half-earn" rule for sport calories absorbs that.
+- **Watch accuracy:** wrist energy estimates carry roughly 20–30% error, with no consistent direction. Resting energy is calculated, not measured. Trust the adaptive TDEE over the watch.
+- **Trend weight:** an exponential average adjusted for gaps between weigh-ins (time constant 10 days). Rate and goal date come from a median-based slope on raw weigh-ins over 28 days.
 
 ## Macros
 | | Daily | Why |
 |---|---|---|
 | Protein | 175 g (~2.1 g/kg; ~1 g/lb of goal weight) | Keeps lean mass while in a deficit |
-| Fat | 70 g | Hormonal floor |
+| Fat | 70 g (~0.85 g/kg, ~30%) | The minimum is ~0.5–0.6 g/kg; 60–65 g is fine if you want more carbs for hockey |
 | Carbs | the rest (~150–200 g; +50 g on hockey and golf days) | Fuels intensity |
 
 Spread protein over 4 feedings of 35–50 g (leucine threshold).
@@ -19,10 +20,10 @@ Spread protein over 4 feedings of 35–50 g (leucine threshold).
 ## Activity estimates (net kcal = (MET − 1) × kg × h)
 | Activity | MET | ~Net kcal at 82 kg |
 |---|---|---|
-| Rec hockey, 60 min | 8.0 | ~580 |
+| Rec hockey, 60 min (incl. bench time) | 7.0 | ~495 |
 | Golf, 18 walking (4 h) | 4.8 | ~1,250 |
-| Golf, 18 with cart (4 h) | 3.5 | ~830 (likely overstated; cart golf is mostly standing) |
-| Strength session, 30 min | 5.0 | ~165 |
+| Golf, 18 with cart (4 h) | 2.8 | ~595 |
+| Strength session, 30 min | 4.5 | ~145 |
 | Zone 2, 30 min | 6.0 | ~205 |
 
 ## Situational fueling
@@ -32,4 +33,4 @@ Spread protein over 4 feedings of 35–50 g (leucine threshold).
 - **Late nights at the rink:** have a protein-first fallback ready (shake + fruit, ~350 kcal) so you're not stuck with arena food.
 
 ## Estimating a meal from a photo or description
-Itemize every food, with the portion in grams or household measures. Assume cooking fat for restaurant food (1–2 tbsp, +120–240 kcal). State a confidence level. Photo estimates are typically within ±20–30%, so consistency matters more than precision: the weight trend will expose a systematic bias, and you adjust the target.
+Itemize every food, with the portion in grams or household measures. Assume cooking fat for restaurant food (1–2 tbsp, +120–240 kcal). List sauces, oils and drinks as separate items. Give alcohol in grams (7 kcal/g). Size portions as actually served: restaurant and team-meal portions run 1.5–2× a USDA serving. State a confidence level and a kcal range. Photo estimates are typically within ±20–30%, so consistency matters more than precision: the weight trend will expose a systematic bias, and you adjust the target.
