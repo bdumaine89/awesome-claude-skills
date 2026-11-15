@@ -692,11 +692,18 @@ const PHOTOS = {"7": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAY
 
   function wheel(g, depth, L){
     const w = new THREE.Group();
-    const steel = mat(0xb9bec6, { metalness:.6, roughness:.35 });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(7, 0.6, 10, 40), steel); w.add(ring);
-    for(let a=0;a<3;a++){ const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,7,10), steel); const ang = a*2*Math.PI/3 + Math.PI/2; sp.position.set(Math.cos(ang)*3.5, Math.sin(ang)*3.5, 0); sp.rotation.z = ang + Math.PI/2; w.add(sp);
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(1.1,12,10), mat(0x22252a)); knob.position.set(Math.cos(ang)*7, Math.sin(ang)*7, 1); w.add(knob); }
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,1.5,20), mat(0xc8202f)); hub.rotation.x = Math.PI/2; w.add(hub);
+    // Spacesaver-style three-spoke handle: black, no rim, thick tapered arms with rounded ends
+    const blk = mat(0x030303, { metalness:0, roughness:.6 });
+    const ARM = 7.2;
+    for(let a=0;a<3;a++){
+      const ang = a*2*Math.PI/3 + Math.PI/2;
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.35, ARM, 16), blk);
+      sp.position.set(Math.cos(ang)*ARM/2, Math.sin(ang)*ARM/2, 0); sp.rotation.z = ang - Math.PI/2; w.add(sp);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), blk); tip.scale.set(1, 1, 1.15); tip.position.set(Math.cos(ang)*ARM, Math.sin(ang)*ARM, 0); w.add(tip);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 1.6, 24), blk); hub.rotation.x = Math.PI/2; w.add(hub);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(1.7, 20, 12, 0, Math.PI*2, 0, Math.PI/2), blk); cap.rotation.x = Math.PI/2; cap.position.z = 0.8; w.add(cap);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.2, 14), blk); shaft.rotation.x = Math.PI/2; shaft.position.z = -1.2; w.add(shaft);
     w.position.set(depth/2, 40, L/2 + 2.2); g.add(w); return w;
   }
 
