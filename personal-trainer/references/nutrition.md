@@ -1,7 +1,7 @@
 # Nutrition Protocol
 
 ## Energy math
-- **BMR (Mifflin-St Jeor, male):** 10·kg + 6.25·cm − 5·age + 5. At 182 lb (82.6 kg), 172.7 cm and age 36 that's ≈ **1,730 kcal**.
+- **BMR (Mifflin-St Jeor, male):** 10·kg + 6.25·cm − 5·age + 5. At 182 lb (82.6 kg), 172.7 cm and age 37 that’s ≈ **1,725 kcal**.
 - **Maintenance:** once 5+ days of Apple Health data exist, use the 14-day average of resting + active energy. Before that, use BMR × 1.3 (on his feet all day) + ~250 for training ≈ **2,500 kcal**.
 - **Target:** maintenance − 500 ≈ **2,000 kcal**, plus half of the day's hockey or golf burn. Floor of 1,800.
 - **Expected rate:** ~0.75–1.0 lb/week, so 182 → 170 takes ~12–16 weeks, matching the 16-week program. Water swings of ±2–3 lb from travel, sodium and games are normal, so judge the trend line.
