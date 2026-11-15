@@ -68,6 +68,7 @@ Pull the last 7 `days` docs and the logs. Report: sessions done out of 4, averag
 - [references/integrations.md](references/integrations.md): Apple Health, Athlytic, Withings and Watch data flow, and its limits
 
 ## Hard rules
+- No resistance bands, ever (his preference). Hotel swaps use dumbbells, a bench, a cable if there is one, or bodyweight.
 - Never invent data. If a day has no meals logged, say so; don't assume he ate nothing.
 - Don't prescribe below 1,800 kcal/day. He plays hockey and works 12-hour days.
 - If he reports pain (groin, hip, low back, shoulder), stop progressing that pattern, give a pain-free regression, and suggest seeing the team's physio. Don't diagnose.

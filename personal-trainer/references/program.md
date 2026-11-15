@@ -27,7 +27,7 @@ Load progression within a block: about +3% a week (wk1 → wk3), then deload. At
 | **D4 Athletic + Conditioning** | A: Box Jump + Skater Bound · B: SL-RDL + 1-Arm Cable Row · C: Suitcase Carry + Bike 6×30/45 | A: Broad Jump + Skater · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Skater + MB Slam · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Box Jump + Skater · B: SL-RDL + CS Row · C: Carry + Bike |
 | D5 Recovery | Zone 2 for 25 min at HR 125–140 + 5 min mobility flow. The default on hockey-free weeks; required on red-readiness days. | | | |
 
-Warm-up (5 min): 90/90 switches, world's greatest stretch, hip airplanes, band pull-aparts, neck 4-way isometrics, pogo hops, then 2 ramp-up sets of A1.
+Warm-up (5 min): 90/90 switches, world's greatest stretch, hip airplanes, prone Y-T raises (no weight), neck 4-way isometrics, pogo hops, then 2 ramp-up sets of A1.
 
 **Logging:** each exercise has one row per set (checkbox, load, reps). The exercise checks itself off when all its sets are done. Record the RPE of the last set; the next suggestion uses it.
 
@@ -50,17 +50,17 @@ These are estimates for a trained, 182 lb rec athlete. **Calibrate in week 1** i
 | DB Bench Press | 55 lb ×2 | same | 45 lb ×2 |
 | Incline DB Press | 45 lb ×2 | same | 40 lb ×2 |
 | Half-Kneeling Landmine Press | +25 lb plates | 1-Arm DB Press | 35 lb |
-| Lat Pulldown | 130 lb | Band Pulldown / Pull-up / Inverted Row | BW |
+| Lat Pulldown | 130 lb | Pull-up / Inverted Row | BW |
 | Chest-Supported DB Row | 45 lb ×2 | Incline-Bench DB Row | 45 lb ×2 |
 | 1-Arm Cable Row + Rotation | 60 lb | 1-Arm DB Row | 50 lb |
 | Face Pull | 40 lb | Prone Y-T-W | 8 lb ×2 |
-| Pallof Press | 30 lb | Band Pallof Press (travel band) | band |
+| Pallof Press | 30 lb | Plank DB Pull-Through | 20 lb DB |
 | Woodchop / Lift | 35 / 30 lb | DB Chop / Lift | 20 / 15 lb |
 | MB Scoop Toss | 8 lb ball | Speed DB Chop | 10 lb |
 | Suitcase Carry | 70 lb | same | 50 lb (cap) |
 | Pull-up, Push-up, Nordic, jumps | BW | Inverted row / slider curl | BW |
 
-**Travel kit:** pack a set of long resistance bands; they cover the face pull, Pallof press, chop and pulldown.
+No resistance bands anywhere in the program: every hotel swap uses dumbbells, a bench or bodyweight.
 
 **Hotel cap rule:** when the prescription exceeds the heaviest dumbbell, keep that dumbbell and add a 4 s eccentric or 1¼ reps.
 
