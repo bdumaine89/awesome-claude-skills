@@ -364,7 +364,9 @@ const PHOTOS = {"7": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAY
     [cb, ...shelfYs].forEach((y0, tier)=>{
       const n = Math.max(3, Math.floor((L-4)/11)), sw = (L-4)/n;
       for(let j=0;j<n;j++){
-        const h = (tier===0?9:7) + rr()*4, c = stackCols[Math.floor(rr()*stackCols.length)];
+        const tops = [shelfYs[0], shelfYs[1], ct - 2.8];        // underside of the shelf above / the roll-top housing
+        const room = tops[tier] - y0 - 1.4;
+        const h = Math.max(1.6, Math.min((tier===0?9:7) + rr()*4, room)), c = stackCols[Math.floor(rr()*stackCols.length)];
         const x = -L/2 + 2 + sw*j + sw/2;
         for(let q=0;q<Math.floor(h/1.6);q++) box(f, sw-2.2, 1.45, 12, c, x, y0+0.5+q*1.6+0.72, -FACE_D/2 - 1, { roughness:.95 });
       }
