@@ -84,7 +84,7 @@ label.btn:hover{border-color:#4a505b}
     <section>
       <h2>Open aisle</h2>
       <p class="hint" id="aisleNote" style="margin-top:0"></p>
-      <p class="hint">Click or tap the end of any carriage to crank open the aisle on that side, or use the buttons at the top. Click the roll-top shutter above the drawer bank to open or close it. Face view shows either wall of the open aisle straight on: scroll to zoom, drag to pan, arrow keys to switch walls, Esc for 3D.</p>
+      <p class="hint">Click or tap the end of any carriage to crank open the aisle on that side, or use the buttons at the top. Click the roll-top shutter above the drawer bank to open or close it, and click any drawer to pull it out. Face view shows either wall of the open aisle straight on: scroll to zoom, drag to pan, arrow keys to switch walls, Esc for 3D.</p>
     </section>
     <section>
       <h2>Look</h2>
@@ -174,7 +174,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   const SUM_DEPTH = UNITS.reduce((s,u)=>s+u.depth,0);
   const TOTAL = SUM_DEPTH + AISLE;
 
-  const state = { photos:true, shutterOpen:false, gap:4, sections:4, cw:22, ch:26,
+  const state = { openDrawers:new Set(), photos:true, shutterOpen:false, gap:4, sections:4, cw:22, ch:26,
     helmet:{w:11,h:9}, glove:{w:11,h:6}, skate:{w:14,h:6} };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -350,6 +350,55 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
       lines.forEach((t,i)=> x.fillText(t, w/2, y0 + i*lh, w-16));
     });
   }
+  const DRAWER_TRAVEL = 16;            // how far a drawer slides out, inches
+  const drawerGroups = [];
+  function sockRoll(dg, color, x, y, z){
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 3.4, 14), mat(color, { roughness:.98 }));
+    m.rotation.z = Math.PI/2; m.position.set(x, y, z); dg.add(m);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.8, 14), mat(new THREE.Color(color).offsetHSL(0,0,-0.08).getHex(), { roughness:.98 }));
+    band.rotation.z = Math.PI/2; band.position.set(x + 1.0, y, z); dg.add(band);
+  }
+  function foldTopTex(hex, kind){
+    const k = 'ft'+hex+kind; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(256,128,(x,w,h)=>{
+      const light = new THREE.Color(hex).getHSL({}).l > 0.6;
+      x.fillStyle = hex; x.fillRect(0,0,w,h);
+      for(let i=0;i<2200;i++){ x.fillStyle = Math.random()<.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.09)'; x.fillRect(Math.random()*w, Math.random()*h, 2, 1); }
+      const g = x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(0,0,0,.35)'); g.addColorStop(.08,'rgba(255,255,255,.08)'); g.addColorStop(.92,'rgba(255,255,255,.08)'); g.addColorStop(1,'rgba(0,0,0,.35)'); x.fillStyle = g; x.fillRect(0,0,w,h);
+      x.strokeStyle = light ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.16)'; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(w*.33,4); x.lineTo(w*.33,h-4); x.moveTo(w*.67,4); x.lineTo(w*.67,h-4); x.stroke();
+      if(kind==='pants'){ x.fillStyle = light ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.10)'; x.fillRect(0,0,w,h*.18); }
+      else { x.strokeStyle = light ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.2)'; x.beginPath(); x.ellipse(w/2, 0, w*.1, h*.22, 0, 0, Math.PI); x.stroke(); }
+    });
+  }
+  function drawerContents(dg, lines, cx, y0, w, h, d, seed){
+    const t = lines.join(' ').toLowerCase();
+    if(t.includes('spare')) return;
+    if(t.includes('sock')){
+      const cut = t.includes('cut'), cols = Math.max(1, Math.floor(w/3.8)), rows = Math.max(1, Math.floor(d/2.6));
+      const colors = cut ? [0x16171a, 0xf0f0ee] : [0xf2f2f0, 0xe4e4e2];
+      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) sockRoll(dg, colors[(r+c)%2], cx - w/2 + 1.9 + c*(w-1)/cols, y0 + 1.15, -1.6 - r*2.6);
+      return;
+    }
+    // folded garments, laid in two stacks front-to-back
+    const kind = t.includes('l/s') ? 'crew' : t.includes('pants') ? 'pants' : t.includes('shorts') ? 'pants' : 'crew';
+    const hex = t.includes('compression') ? '#16171a' : t.includes('shorts') ? '#1d1e22' : (seed%2 ? '#c8202f' : '#eeeeec');
+    const cat = { kind, hex, fold: 1.25 };
+    const n = Math.max(1, Math.floor((h - 0.3)/1.3));
+    for(const z of [-4.8, -14.2]){
+      const r = rand(seed*7 + (z<-10?3:1)); let topY = y0, lastW = w, lastX = cx, lastRot = 0;
+      for(let q=0;q<n;q++){
+        const ww = w - 0.6 - r()*0.6, hh = 1.2 + r()*0.1;
+        const fm = new THREE.MeshStandardMaterial({ map:garmentTex(kind, hex, (seed+q)%5), roughness:.95 });
+        const m = new THREE.Mesh(foldedGeo(ww, hh, 7.4), [fm, mat(new THREE.Color(hex).offsetHSL(0,0,-0.04).getHex(), { roughness:.97 })]);
+        lastX = cx + (r()-0.5)*0.4; lastRot = (r()-0.5)*0.05; lastW = ww;
+        m.position.set(lastX, y0 + hh/2 + q*1.3, z); m.rotation.y = lastRot; dg.add(m); topY = y0 + hh + q*1.3;
+      }
+      // folded top of the pile: fold lines and fabric grain seen from above
+      const top = new THREE.Mesh(new THREE.PlaneGeometry(lastW - 1.0, 6.6), new THREE.MeshStandardMaterial({ map:foldTopTex(hex, kind), roughness:.95 }));
+      top.rotation.x = -Math.PI/2; top.rotation.z = -lastRot; top.position.set(lastX, topY + 0.02, z); dg.add(top);
+    }
+  }
   function buildDrawers(f, face, L, H){
     const black = 0x0e0f11, front = 0x060607, alu = { metalness:.75, roughness:.32 };
     const DTOP = 56;                      // drawers from the base up to 56"
@@ -375,15 +424,24 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
       const layout = DRAWER_LAYOUTS[state.sections], rows = layout[0].length;
       const x0 = secLeft(L,i), cx = x0 + state.cw/2, dh = (DTOP-BASE-1)/rows;
       for(let d=0; d<rows; d++){
-        const top = DTOP - d*dh, y = top - dh/2;
-        box(f, state.cw-0.4, dh-0.5, 0.8, front, cx, y, 0.4, { metalness:.25, roughness:.45 });
-        box(f, state.cw-0.4, 1.3, 1.7, 0xc5c9ce, cx, top-0.9, 1.0, alu);                 // full-width aluminum pull
-        box(f, state.cw-0.4, 0.25, 0.3, 0x2a2c30, cx, top-1.65, 0.95);                   // pull shadow lip
+        const top = DTOP - d*dh, y = top - dh/2, key = i+'-'+d;
+        // each drawer is its own group so it can slide out (click it)
+        const dg = new THREE.Group(); f.add(dg); dg.userData.drawerKey = key; drawerGroups.push(dg);
+        dg.position.z = state.openDrawers.has(key) ? DRAWER_TRAVEL : 0;
+        box(dg, state.cw-0.4, dh-0.5, 0.8, front, cx, y, 0.4, { metalness:.25, roughness:.45 });
+        box(dg, state.cw-0.4, 1.3, 1.7, 0xc5c9ce, cx, top-0.9, 1.0, alu);                 // full-width aluminum pull
+        box(dg, state.cw-0.4, 0.25, 0.3, 0x2a2c30, cx, top-1.65, 0.95);                   // pull shadow lip
         const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,0.5,14), mat(0xb9bec6, alu));
-        lock.rotation.x = Math.PI/2; lock.position.set(x0+state.cw-1.4, top-2.6, 0.95); f.add(lock);
+        lock.rotation.x = Math.PI/2; lock.position.set(x0+state.cw-1.4, top-2.6, 0.95); dg.add(lock);
         const lines = (layout[i] && layout[i][d]) || ['Spare'];
         const lab = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 3.05), new THREE.MeshBasicMaterial({ map:drawerLabelTex(lines) }));
-        lab.position.set(cx, top-4.6, 0.82); f.add(lab);
+        lab.position.set(cx, top-4.6, 0.82); dg.add(lab);
+        // drawer box behind the front: floor, sides, back, then what's inside
+        const iw = state.cw - 1.6, ih = dh - 1.8, dd = 20, fy = top - dh + 0.55, tray = 0x6b7078;
+        box(dg, iw, 0.3, dd, tray, cx, fy, -dd/2);
+        for(const sx of [-1,1]) box(dg, 0.3, ih, dd, tray, cx + sx*iw/2, fy + ih/2, -dd/2);
+        box(dg, iw, ih, 0.3, tray, cx, fy + ih/2, -dd + 0.15);
+        drawerContents(dg, lines, cx, fy + 0.15, iw - 0.6, ih - 0.4, dd - 1, i*31 + d);
       }
     }
     // separator rail between drawers and shutter
@@ -412,14 +470,106 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
 
   // ---- stationary apparel cubbies: one column per item, sizes top to bottom ----
   const APPAREL = [
-    { name:'Track Jacket', items:['M','L','XL','2X'], color:0x16171a },
-    { name:'Track Pants',  items:['M','L','XL','2X'], color:0x0f1012 },
-    { name:'Hoodie',       items:['M','L','XL','2X'], color:0xc8202f },
-    { name:'Fleece Crew',  items:['M','L','XL','2X'], color:0x8d939c },
-    { name:'1/4 Zip',      items:['M','L','XL'],      color:0x24272c },
-    { name:'Polo',         items:['M','L','XL'],      color:0xf0f0ee },
+    { name:'Track Jacket', items:['M','L','XL','2X'], kind:'jacket', hex:'#1b1c20', fold:1.8 },
+    { name:'Track Pants',  items:['M','L','XL','2X'], kind:'pants',  hex:'#141518', fold:1.7 },
+    { name:'Hoodie',       items:['M','L','XL','2X'], kind:'hoodie', hex:'#b81d2b', fold:2.6 },
+    { name:'Fleece Crew',  items:['M','L','XL','2X'], kind:'crew',   hex:'#8a9099', fold:2.3 },
+    { name:'1/4 Zip',      items:['M','L','XL'],      kind:'qzip',   hex:'#25282e', fold:2.0 },
+    { name:'Polo',         items:['M','L','XL'],      kind:'polo',   hex:'#eeeeec', fold:1.3 },
     { name:'Hats',         items:['Players Hat','Coaches Hat','Flat Brim','Beanies'], hats:true },
   ];
+  // ---- garment rendering: soft folded shapes with drawn fabric + garment details ----
+  function shade(hex, amt){ const c = new THREE.Color(hex); c.offsetHSL(0, 0, amt); return '#'+c.getHexString(); }
+  function garmentTex(kind, hex, seed){
+    const k = 'g'+kind+hex+seed; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(512,128,(x,w,h)=>{
+      const r = rand(seed*131+7), dark = new THREE.Color(hex).getHSL({}).l < 0.25, light = new THREE.Color(hex).getHSL({}).l > 0.8;
+      x.fillStyle = hex; x.fillRect(0,0,w,h);
+      // rounded fold: lit crest, shadowed underside
+      let g = x.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'rgba(0,0,0,.35)'); g.addColorStop(.18, dark ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.22)');
+      g.addColorStop(.45,'rgba(255,255,255,0)'); g.addColorStop(.82,'rgba(0,0,0,.08)'); g.addColorStop(1,'rgba(0,0,0,.45)');
+      x.fillStyle = g; x.fillRect(0,0,w,h);
+      // knit / weave grain
+      for(let i=0;i<3200;i++){ x.fillStyle = r()<.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.07)'; x.fillRect(r()*w, r()*h, 1+r()*2, 1); }
+      if(kind==='crew' || kind==='hoodie'){ x.strokeStyle='rgba(0,0,0,.05)'; for(let y=3;y<h;y+=3){ x.beginPath(); x.moveTo(0,y); x.lineTo(w,y); x.stroke(); } }
+      if(kind==='jacket' || kind==='pants'){ x.strokeStyle='rgba(255,255,255,.035)'; for(let i=-h;i<w;i+=4){ x.beginPath(); x.moveTo(i,0); x.lineTo(i+h,h); x.stroke(); } }
+      // soft wrinkles
+      for(let i=0;i<4;i++){ const cx = 30 + r()*(w-60), ww = 10 + r()*18; g = x.createLinearGradient(cx-ww,0,cx+ww,0);
+        g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(.5, light ? 'rgba(0,0,0,.10)' : 'rgba(0,0,0,.18)'); g.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=g; x.fillRect(cx-ww, h*.15, ww*2, h*.7); }
+      const mid = w/2, ink = light ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.55)';
+      if(kind==='jacket'){
+        x.fillStyle='#0a0a0b'; x.fillRect(mid-5,0,10,h); x.fillStyle='#6d7178'; for(let y=2;y<h;y+=4){ x.fillRect(mid-4,y,3,2); x.fillRect(mid+1,y+2,3,2); }
+        for(const sx of [70, w-70]){ x.fillStyle='#f2f2f0'; x.fillRect(sx-7,0,4,h); x.fillStyle='#c8202f'; x.fillRect(sx-2,0,5,h); x.fillStyle='#e9b43a'; x.fillRect(sx+4,0,3,h); }
+      } else if(kind==='pants'){
+        x.fillStyle = shade(hex,-0.04); x.fillRect(0,0,w,h*.42); x.strokeStyle='rgba(255,255,255,.08)'; for(let y=3;y<h*.42;y+=3){ x.beginPath(); x.moveTo(0,y); x.lineTo(w,y); x.stroke(); }
+        x.strokeStyle='#f2f2f0'; x.lineWidth=3; x.beginPath(); x.moveTo(mid-14,h*.2); x.quadraticCurveTo(mid-30,h*.75,mid-22,h*.95); x.moveTo(mid+14,h*.2); x.quadraticCurveTo(mid+28,h*.7,mid+18,h*.92); x.stroke();
+        x.fillStyle='#d8d8d8'; x.fillRect(mid-25,h*.88,6,10); x.fillRect(mid+15,h*.86,6,10);
+      } else if(kind==='hoodie'){
+        x.strokeStyle='rgba(0,0,0,.35)'; x.lineWidth=3; x.beginPath(); x.ellipse(mid,-h*.15,w*.22,h*.55,0,0,Math.PI); x.stroke();
+        x.strokeStyle='#f4f4f2'; x.lineWidth=4; x.beginPath(); x.moveTo(mid-16,h*.3); x.lineTo(mid-20,h*.92); x.moveTo(mid+16,h*.3); x.lineTo(mid+21,h*.9); x.stroke();
+        x.fillStyle='#bdbdbd'; x.fillRect(mid-23,h*.86,7,12); x.fillRect(mid+18,h*.84,7,12);
+        x.strokeStyle='rgba(0,0,0,.25)'; x.lineWidth=2; x.beginPath(); x.moveTo(w*.22,h); x.lineTo(w*.3,h*.72); x.lineTo(w*.7,h*.72); x.lineTo(w*.78,h); x.stroke();
+      } else if(kind==='crew'){
+        x.fillStyle = shade(hex,-0.07); x.beginPath(); x.ellipse(mid,0,w*.17,h*.5,0,0,Math.PI); x.fill();
+        x.strokeStyle='rgba(255,255,255,.12)'; for(let a=0;a<40;a++){ const t=a/40*Math.PI; x.beginPath(); x.moveTo(mid+Math.cos(t)*w*.13,Math.sin(t)*h*.36); x.lineTo(mid+Math.cos(t)*w*.17,Math.sin(t)*h*.5); x.stroke(); }
+        x.fillStyle = hex; x.beginPath(); x.ellipse(mid,0,w*.12,h*.32,0,0,Math.PI); x.fill();
+      } else if(kind==='qzip'){
+        x.fillStyle = shade(hex,-0.05); x.fillRect(mid-60,0,120,h*.32);
+        x.fillStyle='#0a0a0b'; x.fillRect(mid-4,0,8,h*.75); x.fillStyle='#8d939c'; for(let y=2;y<h*.72;y+=4){ x.fillRect(mid-3,y,2,2); x.fillRect(mid+1,y+2,2,2); }
+        x.fillStyle='#c9cdd2'; x.fillRect(mid-3,h*.62,6,h*.3); x.fillStyle='#e9b43a'; x.fillRect(mid-3,h*.86,6,4);
+      } else if(kind==='polo'){
+        x.fillStyle = shade(hex,-0.06); x.beginPath(); x.moveTo(mid-70,0); x.lineTo(mid-6,h*.75); x.lineTo(mid,0); x.fill(); x.beginPath(); x.moveTo(mid+70,0); x.lineTo(mid+6,h*.75); x.lineTo(mid,0); x.fill();
+        x.strokeStyle='rgba(0,0,0,.25)'; x.lineWidth=2; x.strokeRect(mid-9,h*.1,18,h*.85);
+        x.fillStyle='#d6d6d2'; for(const y of [.4,.7]){ x.beginPath(); x.arc(mid,h*y,4,0,7); x.fill(); x.strokeStyle='rgba(0,0,0,.3)'; x.stroke(); }
+        x.fillStyle='#c8202f'; x.fillRect(w*.72,h*.3,26,16);
+      }
+    });
+  }
+  const foldGeoCache = {};
+  function foldedGeo(w, h, d){
+    const k = [w,h,d].map(v=>v.toFixed(2)).join(','); if(foldGeoCache[k]) return foldGeoCache[k];
+    const r = Math.min(h*0.48, 1.1), sh = new THREE.Shape();
+    sh.moveTo(-w/2 + r, -h/2); sh.lineTo(w/2 - r, -h/2); sh.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r); sh.lineTo(w/2, h/2 - r);
+    sh.quadraticCurveTo(w/2, h/2, w/2 - r, h/2); sh.lineTo(-w/2 + r, h/2); sh.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
+    sh.lineTo(-w/2, -h/2 + r); sh.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
+    const g = new THREE.ExtrudeGeometry(sh, { depth:d, bevelEnabled:false, curveSegments:6 }); g.translate(0,0,-d/2);
+    // caps: map shape coordinates onto the texture
+    const uv = g.attributes.uv, pos = g.attributes.position;
+    for(let i=0;i<uv.count;i++) if(g.groups[0] && i < g.groups[0].count) uv.setXY(i, pos.getX(i)/w + 0.5, pos.getY(i)/h + 0.5);
+    return foldGeoCache[k] = g;
+  }
+  function foldedStack(f, cat, cx, fl, maxW, room, seed){
+    const r = rand(seed), n = Math.max(2, Math.floor(room*(0.6 + r()*0.32)/cat.fold));
+    const side = mat(new THREE.Color(cat.hex).offsetHSL(0,0,-0.04).getHex(), { roughness:.97 });
+    for(let q=0;q<n;q++){
+      const w = maxW - 0.4 - r()*0.7, h = cat.fold*(0.92 + r()*0.12);
+      const front = new THREE.MeshStandardMaterial({ map:garmentTex(cat.kind, cat.hex, (seed+q)%5), roughness:.95 });
+      const m = new THREE.Mesh(foldedGeo(w, h, 12), [front, side]);
+      m.position.set(cx + (r()-0.5)*0.5, fl + 0.05 + q*cat.fold + h/2, -FACE_D/2 + 3.5 + (r()-0.5)*0.6);
+      m.rotation.y = (r()-0.5)*0.05; m.rotation.z = (r()-0.5)*0.012; f.add(m);
+    }
+  }
+  function capTex(hex){
+    const k='cap'+hex; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(256,128,(x,w,h)=>{
+      x.fillStyle=hex; x.fillRect(0,0,w,h);
+      for(let i=0;i<1800;i++){ x.fillStyle = Math.random()<.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.08)'; x.fillRect(Math.random()*w, Math.random()*h, 2, 1); }
+      x.strokeStyle='rgba(0,0,0,.35)'; x.lineWidth=2; for(let i=0;i<6;i++){ const u=i*w/6; x.beginPath(); x.moveTo(u,0); x.lineTo(u,h); x.stroke(); }
+      x.fillStyle='rgba(255,255,255,.18)'; for(let i=0;i<6;i++) x.beginPath(), x.arc(i*w/6+w/12, h*.28, 3, 0, 7), x.fill();
+      const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.12)'); g.addColorStop(1,'rgba(0,0,0,.25)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+    });
+  }
+  function beanieTex(hex){
+    const k='bn'+hex; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(512,128,(x,w,h)=>{
+      x.fillStyle=hex; x.fillRect(0,0,w,h);
+      for(let u=0;u<w;u+=8){ const g=x.createLinearGradient(u,0,u+8,0); g.addColorStop(0,'rgba(0,0,0,.28)'); g.addColorStop(.5,'rgba(255,255,255,.10)'); g.addColorStop(1,'rgba(0,0,0,.28)'); x.fillStyle=g; x.fillRect(u,0,8,h); }
+      x.fillStyle='rgba(0,0,0,.30)'; x.fillRect(0,h*.52,w,3); x.fillStyle='rgba(255,255,255,.08)'; x.fillRect(0,h*.55,w,h*.45);
+      x.fillStyle='#e9b43a'; x.fillRect(0,h*.68,w,5); x.fillStyle='#f2f2f0'; x.fillRect(0,h*.68+5,w,4);
+    });
+  }
+
   function buildApparel(f, face, L, H){
     const steel = 0xc9cdd2, cols = APPAREL.length, rows = 4;
     const cwA = (L - (cols+1)*T)/cols, chA = (H - BASE - T - rows*T)/rows;
@@ -438,25 +588,26 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
         const room = chA - lw*150/256 - 2;
         if(cat.hats){
           const dark = (r%2) ? 0x111113 : 0xc8202f;
+          const darkHex = '#'+new THREE.Color(dark).getHexString();
           if(item === 'Beanies'){
-            for(let q=0;q<3;q++) box(f, Math.min(9, cwA-2), 2.2, 9, dark, cx, fl + 1.1 + q*2.3, -FACE_D/2+2, { roughness:.95 });
+            const bw = Math.min(9, cwA-2), side = mat(new THREE.Color(dark).offsetHSL(0,0,-0.03).getHex(), { roughness:.98 });
+            for(let q=0;q<4;q++){ const m = new THREE.Mesh(foldedGeo(bw - (q%2)*0.5, 2.3, 9), [new THREE.MeshStandardMaterial({ map:beanieTex(q%2 ? '#141518' : '#b81d2b'), roughness:.98 }), side]);
+              m.position.set(cx + ((q*37)%5-2)*0.12, fl + 1.2 + q*2.35, -FACE_D/2 + 2); m.rotation.y = ((q*53)%7-3)*0.012; f.add(m); }
           } else {
             const n = Math.max(1, Math.min(3, Math.floor((cwA-1)/7.5)));
             for(let k=0;k<n;k++) for(let q=0;q<3;q++){
               const hx = x0 + 0.5 + (cwA-1)/n*(k+0.5), hy = fl + q*1.3;
-              const dome = new THREE.Mesh(new THREE.SphereGeometry(3.4, 18, 10, 0, Math.PI*2, 0, Math.PI/2), mat(dark));
-              dome.position.set(hx, hy, -FACE_D/2+1); f.add(dome);
-              const brim = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.25, 18, 1, false, -Math.PI/2, Math.PI), mat(item==='Flat Brim' ? 0x15161a : dark));
-              brim.position.set(hx, hy+0.15, -FACE_D/2+3.2); f.add(brim);
+              const dome = new THREE.Mesh(new THREE.SphereGeometry(3.4, 24, 12, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({ map:capTex(darkHex), roughness:.9 }));
+              dome.scale.set(1, 0.92, 1.08); dome.position.set(hx, hy, -FACE_D/2+1); f.add(dome);
+              const btn = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), mat(dark)); btn.position.set(hx, hy + 3.15, -FACE_D/2+1); f.add(btn);
+              const flat = item==='Flat Brim';
+              const brim = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 0.22, 24, 1, false, -Math.PI/2, Math.PI), mat(flat ? 0x15161a : dark, { roughness:.8 }));
+              brim.scale.set(1, 1, flat ? 0.95 : 0.85); brim.position.set(hx, hy + (flat ? 0.15 : 0.35), -FACE_D/2 + 3.3); brim.rotation.x = flat ? 0 : 0.22; f.add(brim);
+              const sweat = new THREE.Mesh(new THREE.TorusGeometry(3.35, 0.12, 6, 32), mat(new THREE.Color(dark).offsetHSL(0,0,-0.05).getHex())); sweat.rotation.x = Math.PI/2; sweat.position.set(hx, hy + 0.08, -FACE_D/2+1); f.add(sweat);
             }
           }
         } else {
-          const layers = Math.max(2, Math.floor(room*(0.55 + rr()*0.35)/1.7));
-          const base = new THREE.Color(cat.color);
-          for(let q=0;q<layers;q++){
-            const col = base.clone().offsetHSL(0,0,(q%2)*0.03).getHex();
-            box(f, cwA-2, 1.6, 13, col, cx, fl + 0.8 + q*1.7, -FACE_D/2+2, { roughness:.95 });
-          }
+          foldedStack(f, cat, cx, fl, cwA - 1.2, room, c*11 + r*3 + 1);
         }
       }
     });
@@ -723,7 +874,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
 
   function build(){
     if(root){ scene.remove(root); root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
-    root = new THREE.Group(); scene.add(root); unitGroups = []; labels.length = 0; shutters.length = 0;
+    root = new THREE.Group(); scene.add(root); unitGroups = []; labels.length = 0; shutters.length = 0; drawerGroups.length = 0;
     const { L, H } = dimsFor();
     // floor + rails
     let floorMat = mat(0x3a3d43, { roughness:.95 });
@@ -880,6 +1031,8 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     ptr.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr, activeCam());
     const hits = ray.intersectObjects(unitGroups, true).filter(h=>h.object.type==='Mesh'); if(!hits.length) return;
     if(hits[0].object.userData.shutter){ setShutter(!state.shutterOpen); return; }
+    { let o = hits[0].object; while(o && o.userData.drawerKey === undefined) o = o.parent;
+      if(o){ const k = o.userData.drawerKey; state.openDrawers.has(k) ? state.openDrawers.delete(k) : state.openDrawers.add(k); return; } }
     let o = hits[0].object; while(o && o.userData.unitIndex===undefined) o = o.parent; if(!o) return;
     const i = o.userData.unitIndex; const local = o.worldToLocal(hits[0].point.clone());
     let gap = local.x < UNITS[i].depth/2 ? i : i+1; if(gap < 1) gap = 1;
@@ -918,6 +1071,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   function tick(){
     const dt = Math.min(clock.getDelta(), 0.05);
     unitGroups.forEach(g=>{ const d = g.userData.targetX - g.position.x; g.position.x += Math.abs(d) < 0.05 ? d : d*Math.min(1, dt*3.2); });
+    drawerGroups.forEach(g=>{ const t = state.openDrawers.has(g.userData.drawerKey) ? DRAWER_TRAVEL : 0, d = t - g.position.z; g.position.z += Math.abs(d)<0.02 || reduce ? d : d*Math.min(1, dt*5); });
     shutters.forEach(g=>{ const t = state.shutterOpen ? SHUTTER_OPEN : 1; const d = t - g.scale.y; g.scale.y += Math.abs(d)<0.002 || reduce ? d : d*Math.min(1, dt*3); });
     if(camTween){ camTween.t = Math.min(1, camTween.t + dt/0.9); const e = 1 - Math.pow(1-camTween.t, 3);
       camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e); if(camTween.t>=1) camTween=null; }
