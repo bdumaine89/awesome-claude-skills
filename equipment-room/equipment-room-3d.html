@@ -500,27 +500,39 @@ const PHOTOS = {"7": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAY
       x.fillStyle='#111'; x.font='600 24px "Barlow Condensed", sans-serif'; x.textAlign='left'; x.fillText(color[0].toUpperCase(), 56, 123, 70);
     });
   }
+  // full-height columns (Anaheim style): one model per column, boxes stacked base to top, dividers between, no shelves
+  const COLS = { Red:'#c8202f', Black:'#141518', White:'#f2f2f0' };
+  function helmetColumns(){
+    const M = HELMET_MODELS, out = [];
+    for(let c=0;c<5;c++){ const skus=[]; for(const sz of ['S','M','L']) for(const col of ['Red','Black','White']) skus.push([sz,col]); out.push({ m:M[c], label:M[c].name, skus }); }
+    const tk = M[5]; const sk = (nums)=>{ const r=[]; for(const n of nums) for(const col of ['Red','Black','White']) r.push([n,col]); return r; };
+    out.push({ m:tk, label:'CCM Tacks Custom', skus:sk(['#11','#17','#19']) });
+    out.push({ m:tk, label:'CCM Tacks Custom', skus:sk(['#43','#44','#94']) });
+    return out;
+  }
+  let helmetFit = null;
   function buildHelmets(f, face, L, H){
-    const steel = 0xc9cdd2, cols = HELMET_MODELS.length, rows = 3;
-    const cwA = (L - (cols+1)*T)/cols, chA = (H - BASE - T - rows*T)/rows;
+    const steel = 0xc9cdd2, cols = 7, colsData = helmetColumns();
+    const cwA = (L - (cols+1)*T)/cols, colH = H - BASE - 2*T;
     for(let c=0;c<=cols;c++) box(f, T, H-BASE, FACE_D, steel, -L/2 + T/2 + c*(cwA+T), BASE+(H-BASE)/2, -FACE_D/2);
-    for(let r=0;r<=rows;r++){ const fl = BASE + T + r*(chA+T); box(f, L, T, FACE_D, steel, 0, fl - T/2, -FACE_D/2); }
-    const lw = Math.min(8, cwA-1), lh = lw*150/256;
-    const bw = Math.min(11, cwA-0.8), bh = Math.min(8, (chA - lh - 1.2)/3), bd = 13;
-    HELMET_MODELS.forEach((m, c)=>{
-      const cx = -L/2 + T + c*(cwA+T) + cwA/2;
-      const sideMat = mat(BRAND[m.brand].side, { roughness:.7 });
-      m.sizes.forEach((size, r)=>{
-        const fl = BASE + T + (rows-1-r)*(chA+T);
-        const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), new THREE.MeshBasicMaterial({ map:drawerLabelTex([m.name, size]) }));
-        lab.position.set(cx, fl + chA - lh/2 - 0.4, 0.15); f.add(lab);
-        HELMET_COLORS.forEach((col, j)=>{
-          const front = new THREE.MeshStandardMaterial({ map:helmetBoxTex(m, size, col), roughness:.6 });
-          const bx = new THREE.Mesh(new THREE.BoxGeometry(bw, bh-0.15, bd), [sideMat, sideMat, sideMat, sideMat, front, sideMat]);
-          bx.position.set(cx, fl + j*bh + bh/2, -bd/2 - 0.6); bx.rotation.y = (j%2 ? 1 : -1)*0.015; f.add(bx);
-        });
+    box(f, L, T, FACE_D, steel, 0, BASE + T/2, -FACE_D/2); box(f, L, T, FACE_D, steel, 0, H - T/2, -FACE_D/2);
+    const bw = Math.min(state.helmet.w, cwA-0.4), bh = state.helmet.h, bd = 13, labH = 3.2;
+    const per = Math.max(0, Math.floor((colH - labH - 0.4)/bh));
+    const over = [];
+    colsData.forEach((cd, c)=>{
+      const cx = -L/2 + T + c*(cwA+T) + cwA/2, fl = BASE + T;
+      const sideMat = mat(BRAND[cd.m.brand].side, { roughness:.7 });
+      const fit = cd.skus.slice(0, per); cd.skus.slice(per).forEach(([sz,col])=> over.push(`${cd.label} ${sz} ${col}`));
+      const lw = Math.min(9, cwA-0.8);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, labH-0.4), new THREE.MeshBasicMaterial({ map:drawerLabelTex([cd.label, `${fit.length} of ${cd.skus.length} fit`]) }));
+      lab.position.set(cx, H - T - labH/2, 0.15); f.add(lab);
+      fit.forEach(([sz,col], j)=>{
+        const front = new THREE.MeshStandardMaterial({ map:helmetBoxTex(cd.m, sz, [col, COLS[col]]), roughness:.6 });
+        const bx = new THREE.Mesh(new THREE.BoxGeometry(bw, bh-0.12, bd), [sideMat, sideMat, sideMat, sideMat, front, sideMat]);
+        bx.position.set(cx + ((j*37)%5-2)*0.08, fl + j*bh + bh/2, -bd/2 - 0.6); bx.rotation.y = ((j*53)%7-3)*0.006; f.add(bx);
       });
     });
+    helmetFit = { per, cols, total: Math.min(per,9)*cols, skus: 63, over };
     addLabel(f, face.label, H);
   }
 
@@ -825,7 +837,8 @@ const PHOTOS = {"7": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAY
     const { L, H } = dimsFor();
     const total = state.sections*3*2;
     document.getElementById('dims').textContent =
-      `Wall ≈ ${L.toFixed(0)}" long × ${H.toFixed(0)}" high · ${total} cubbies (${state.sections===5?'6 open':'0 open'}) · track ${TOTAL.toFixed(1)}"`;
+      `Wall ≈ ${L.toFixed(0)}" long × ${H.toFixed(0)}" high · ${total} cubbies (${state.sections===5?'6 open':'0 open'}) · track ${TOTAL.toFixed(1)}"` +
+      (helmetFit ? ` · Helmet wall: ${helmetFit.cols} columns × ${helmetFit.per} high = ${helmetFit.cols*helmetFit.per} boxes (list has ${helmetFit.skus}${helmetFit.over.length ? `, ${helmetFit.over.length} don't fit` : ''})` : '');
     const el = document.getElementById('fit'); const r = fitResult;
     if(!r){ el.textContent=''; return; }
     el.className = 'status ' + (r.over ? 'bad' : 'good');
