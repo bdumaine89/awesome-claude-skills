@@ -250,7 +250,8 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   let panelImg = null, sideImg = null, logoIsDefault = true;
   const PANEL_BG = 'rgb(174,6,32)';
   function drawEnd(x,w,h){
-    if(logoIsDefault && panelImg && sideImg){
+    const USE_TEXTURED_PANEL = false;   // flat team red chosen over the textured artwork
+    if(USE_TEXTURED_PANEL && logoIsDefault && panelImg && sideImg){
       // the supplied logo artwork on its textured red, centred; its plain texture mirrored out to the panel edges
       x.fillStyle = PANEL_BG; x.fillRect(0,0,w,h);
       const sc = h*0.95/panelImg.height, pw = panelImg.width*sc, ph = panelImg.height*sc, px = (w-pw)/2;
