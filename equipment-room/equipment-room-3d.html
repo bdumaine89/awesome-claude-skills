@@ -369,14 +369,20 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
         const fl = BASE + T + k*(tH+T);
         if(size==='Spare') continue;
         if(state.photos){
-          const tex = photoTex('pant'), ph2 = tH - 1.4, pw2 = ph2 * 504/714;
-          for(const sx of [-1,1]){
-            const jx = cx + sx*(cwA/4) + ((i+k)%2 ? 0.3 : -0.3)*sx;
-            const pm = new THREE.Mesh(new THREE.PlaneGeometry(pw2, ph2), new THREE.MeshStandardMaterial({ map:tex, transparent:true, alphaTest:0.5, roughness:.8 }));
-            pm.position.set(jx, fl + ph2/2 + 0.1, -4.2); pm.rotation.y = sx*0.06; f.add(pm);
-            box(f, pw2*0.8, ph2*0.85, 12, 0x9e1824, jx, fl + ph2*0.85/2 + 0.1, -10.5, { roughness:.85 });   // body of the pant behind the photo
-            const bag = new THREE.Mesh(foldedGeo(pw2 + 0.8, ph2 + 0.3, 15), bagMat);
-            bag.position.set(jx, fl + (ph2+0.3)/2 + 0.05, -9.8); bag.rotation.y = pm.rotation.y; f.add(bag);
+          // pants laid flat and piled, each in a clear bag (like the reference photo)
+          const tex = photoTex('pant'), TH = 1.43, d = 1.2;             // tilt ~82 deg back, body thickness
+          const pw = cwA*0.7, ph = pw*714/504, layer = ph*Math.cos(TH) + d*Math.sin(TH) + 0.15;
+          const nP = Math.max(1, Math.floor((tH - 0.6)/layer));
+          for(let q=0;q<nP;q++){
+            const seed = i*31 + k*7 + q, jx = ((seed*37)%7 - 3)*0.35, jr = ((seed*53)%9 - 4)*0.025;
+            const g = new THREE.Group();
+            const pm = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map:tex, transparent:true, alphaTest:0.5, roughness:.8 }));
+            pm.position.y = ph/2; g.add(pm);
+            const body = box(g, pw*0.86, ph*0.92, d, 0x9e1824, 0, ph*0.46, -d/2 - 0.05, { roughness:.85 });
+            const bag = new THREE.Mesh(foldedGeo(pw + 0.9, ph + 0.6, d + 0.9), bagMat); bag.position.set(0, ph/2, -d/2); g.add(bag);
+            g.rotation.x = -TH; g.rotation.y = jr;
+            g.position.set(cx + jx, fl + 0.1 + q*layer + d*Math.sin(TH), -1.6 - q*0.3);
+            f.add(g);
           }
           continue;
         }
