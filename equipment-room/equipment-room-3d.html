@@ -367,15 +367,6 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
       tag.position.set(cx, BASE + T + (tiers-1)*(tH+T) + tH - 1.8, 0.2); f.add(tag);
       for(let k=0;k<tiers;k++){
         const fl = BASE + T + k*(tH+T);
-        if(k===0){   // two red totes on the bottom shelf
-          const tw = cwA/2 - 0.6, th = Math.min(tH-1.5, 11), td = 18;
-          for(const sx of [-1,1]){
-            const tote = new THREE.Mesh(new THREE.BoxGeometry(tw, th, td), [mat(0xa81a27,{roughness:.55}), mat(0xa81a27,{roughness:.55}), mat(0x9a1824,{roughness:.55}), mat(0x8a1520), new THREE.MeshStandardMaterial({ map:toteTex(size==='Spare'?'Spare':'Pants '+size), roughness:.5 }), mat(0xa81a27)]);
-            tote.position.set(cx + sx*(tw/2+0.3), fl + th/2, -td/2 - 1); f.add(tote);
-            box(f, tw+0.5, 0.8, td+0.5, 0x8f1621, cx + sx*(tw/2+0.3), fl + th + 0.4, -td/2 - 1, { roughness:.5 });   // lid
-          }
-          continue;
-        }
         if(size==='Spare') continue;
         // bagged pants, two stacked, slightly slumped
         const pw = cwA - 2.4, ph = (tH - 2.2)/2, pd = 15;
