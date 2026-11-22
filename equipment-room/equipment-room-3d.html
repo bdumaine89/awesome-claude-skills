@@ -161,7 +161,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   const UNITS = [
     { name:'Mobile 1', depth:48, mobile:true, faces:{ west:{kind:'drawers', label:'M1 WEST · DRAWER BANK'}, east:{kind:'cubbies', label:'M1 EAST · CUBBY WALL B', numbers:WALL_B} } },
     { name:'Mobile 2', depth:48, mobile:true, faces:{ west:{kind:'cubbies', label:'M2 WEST · CUBBY WALL A', numbers:WALL_A}, east:{kind:'stock', label:'M2 EAST · PROTECTIVE + MISC', color:0x7a818d} } },
-    { name:'Mobile 3', depth:48, mobile:true, faces:{ west:{kind:'goalie', label:'M3 WEST · GOALIE STATION', color:0x2a2d33}, east:{kind:'stock', label:'M3 EAST · PANTS (STOCK)', color:0x2a2d33} } },
+    { name:'Mobile 3', depth:48, mobile:true, faces:{ west:{kind:'goalie', label:'M3 WEST · GOALIE STATION', color:0x2a2d33}, east:{kind:'pants', label:'M3 EAST · PANTS STOCK'} } },
     { name:'Mobile 4', depth:48, mobile:true, faces:{ west:{kind:'stock', label:'M4 WEST · GLOVES (STOCK)', color:0xb3202b}, east:{kind:'helmets', label:'M4 EAST · HELMET STOCK'} } },
     { name:'Stationary', depth:24, mobile:false, faces:{ west:{kind:'apparel', label:'STATIONARY · APPAREL CUBBIES'} } },
   ];
@@ -324,6 +324,73 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   }
   const tierFloor = k => BASE + T + k*(state.ch+T);
   const secLeft = (L,i) => -L/2 + T + i*(state.cw+T);
+
+  // ---- pants stock: open shelving, bagged pants on the upper shelves, red totes on the bottom (Flames colours) ----
+  function pantsTex(seed){
+    const k='pt'+seed; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(256,128,(x,w,h)=>{
+      const r = rand(seed*17+3);
+      x.fillStyle = seed%3===2 ? '#141518' : '#b81d2b'; x.fillRect(0,0,w,h);
+      for(let i=0;i<1600;i++){ x.fillStyle = r()<.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.08)'; x.fillRect(r()*w, r()*h, 2, 1); }
+      // leg stripe: gold / white / black
+      const sx = w*0.66; x.fillStyle='#e9b43a'; x.fillRect(sx,0,8,h); x.fillStyle='#f4f4f2'; x.fillRect(sx+8,0,12,h); x.fillStyle = seed%3===2 ? '#c8202f' : '#0e0f11'; x.fillRect(sx+20,0,8,h);
+      // belt and waistband
+      x.fillStyle='#0e0f11'; x.fillRect(0,0,w,h*0.16); x.fillStyle='#8d939c'; x.fillRect(w*0.18,h*0.03,14,h*0.1);
+      // padding seams
+      x.strokeStyle='rgba(0,0,0,.28)'; x.lineWidth=2; for(const yy of [.45,.72]){ x.beginPath(); x.moveTo(6,h*yy); x.quadraticCurveTo(w*0.35,h*yy+6,sx-4,h*yy); x.stroke(); }
+      const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.12)'); g.addColorStop(1,'rgba(0,0,0,.35)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+    });
+  }
+  function toteTex(label){
+    const k='tt'+label; if(texCache[k]) return texCache[k];
+    return texCache[k] = canvasTex(256,160,(x,w,h)=>{
+      x.fillStyle='#c8202f'; x.fillRect(0,0,w,h);
+      x.strokeStyle='rgba(0,0,0,.25)'; x.lineWidth=3; for(const yy of [.2,.82]){ x.beginPath(); x.moveTo(0,h*yy); x.lineTo(w,h*yy); x.stroke(); }
+      x.fillStyle='rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(w/2,h*0.32,w*0.12,h*0.06,0,0,7); x.fill();   // hand hold
+      x.fillStyle='#fbfbf9'; x.fillRect(w*0.3,h*0.5,w*0.4,h*0.22); x.fillStyle='#111'; x.textAlign='center'; x.textBaseline='middle';
+      x.font='700 26px "Barlow Condensed", sans-serif'; x.fillText(label, w/2, h*0.61, w*0.36);
+      const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.15)'); g.addColorStop(1,'rgba(0,0,0,.25)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+    });
+  }
+  function buildPants(f, face, L, H){
+    const steel = 0xe6e8ea, tiers = 5, sizes = ['Medium','Large','X-Large','XXL','Spare'];
+    const n = state.sections, cwA = state.cw, tH = (H - BASE - T - tiers*T)/tiers;
+    for(let i=0;i<=n;i++) box(f, T, H-BASE, FACE_D, steel, -L/2 + T/2 + i*(cwA+T), BASE+(H-BASE)/2, -FACE_D/2);
+    for(let k=0;k<=tiers;k++){ const fl = BASE + T + k*(tH+T); box(f, L, T, FACE_D, steel, 0, fl - T/2, -FACE_D/2); }
+    box(f, L, H-BASE, 0.4, 0xd9dcdf, 0, BASE+(H-BASE)/2, -FACE_D+0.3);   // back panel
+    const bagMat = new THREE.MeshStandardMaterial({ color:0xeef3f6, transparent:true, opacity:0.18, roughness:.15, metalness:0, depthWrite:false });
+    const sideMat = mat(0x0e0f11, { roughness:.85 });
+    for(let i=0;i<n;i++){
+      const cx = secLeft(L,i) + cwA/2, size = sizes[i] || 'Spare';
+      // size tag on the shelf edge
+      const tag = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 3.05), new THREE.MeshBasicMaterial({ map:drawerLabelTex(['Pants', size]) }));
+      tag.position.set(cx, BASE + T + (tiers-1)*(tH+T) + tH - 1.8, 0.2); f.add(tag);
+      for(let k=0;k<tiers;k++){
+        const fl = BASE + T + k*(tH+T);
+        if(k===0){   // two red totes on the bottom shelf
+          const tw = cwA/2 - 0.6, th = Math.min(tH-1.5, 11), td = 18;
+          for(const sx of [-1,1]){
+            const tote = new THREE.Mesh(new THREE.BoxGeometry(tw, th, td), [mat(0xa81a27,{roughness:.55}), mat(0xa81a27,{roughness:.55}), mat(0x9a1824,{roughness:.55}), mat(0x8a1520), new THREE.MeshStandardMaterial({ map:toteTex(size==='Spare'?'Spare':'Pants '+size), roughness:.5 }), mat(0xa81a27)]);
+            tote.position.set(cx + sx*(tw/2+0.3), fl + th/2, -td/2 - 1); f.add(tote);
+            box(f, tw+0.5, 0.8, td+0.5, 0x8f1621, cx + sx*(tw/2+0.3), fl + th + 0.4, -td/2 - 1, { roughness:.5 });   // lid
+          }
+          continue;
+        }
+        if(size==='Spare') continue;
+        // bagged pants, two stacked, slightly slumped
+        const pw = cwA - 2.4, ph = (tH - 2.2)/2, pd = 15;
+        for(let q=0;q<2;q++){
+          const seed = i*13 + k*5 + q;
+          const pm = new THREE.MeshStandardMaterial({ map:pantsTex(seed), roughness:.8 });
+          const pant = new THREE.Mesh(foldedGeo(pw - (q*0.8), ph - 0.4, pd), [pm, sideMat]);
+          pant.position.set(cx + ((seed%3)-1)*0.4, fl + 0.2 + q*ph + ph/2, -pd/2 - 2); pant.rotation.y = ((seed%5)-2)*0.025; f.add(pant);
+          const bag = new THREE.Mesh(foldedGeo(pw + 0.6 - (q*0.8), ph + 0.2, pd + 1.2), bagMat);
+          bag.position.copy(pant.position); bag.rotation.y = pant.rotation.y; f.add(bag);
+        }
+      }
+    }
+    addLabel(f, face.label, H);
+  }
 
   function buildStock(f, face, L, H, seed){
     shelving(f, L, H);
@@ -923,6 +990,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
         else if(face.kind==='goalie') buildGoalie(f, face, L, H);
         else if(face.kind==='apparel') buildApparel(f, face, L, H);
         else if(face.kind==='helmets') buildHelmets(f, face, L, H);
+        else if(face.kind==='pants') buildPants(f, face, L, H);
         else buildCubbies(f, face, L, H);
         for(let q=nl;q<labels.length;q++) labels[q].userData = { unit:i, side };
       }
