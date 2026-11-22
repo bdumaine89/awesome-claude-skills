@@ -175,7 +175,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   const SUM_DEPTH = UNITS.reduce((s,u)=>s+u.depth,0);
   const TOTAL = SUM_DEPTH + AISLE;
 
-  const state = { openDrawers:new Set(), photos:true, shutterOpen:false, gap:4, sections:4, cw:22, ch:26,
+  const state = { openDrawers:new Set(), photos:true, shutterOpen:false, gap:4, sections:5, cw:22, ch:26,
     helmet:{w:11,h:9}, glove:{w:11,h:6}, skate:{w:14,h:6} };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -756,27 +756,31 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   }
   let helmetFit = null;
   function buildHelmets(f, face, L, H){
-    const steel = 0xc9cdd2, cols = 7, colsData = helmetColumns();
+    const steel = 0xc9cdd2, cols = Math.max(7, Math.floor((L - T)/(state.helmet.w + 0.5 + T)));
     const cwA = (L - (cols+1)*T)/cols, colH = H - BASE - 2*T;
     for(let c=0;c<=cols;c++) box(f, T, H-BASE, FACE_D, steel, -L/2 + T/2 + c*(cwA+T), BASE+(H-BASE)/2, -FACE_D/2);
     box(f, L, T, FACE_D, steel, 0, BASE + T/2, -FACE_D/2); box(f, L, T, FACE_D, steel, 0, H - T/2, -FACE_D/2);
     const bw = Math.min(state.helmet.w, cwA-0.4), bh = state.helmet.h, bd = 13, labH = 3.2;
     const per = Math.max(0, Math.floor((colH - labH - 0.4)/bh));
-    const over = [];
-    colsData.forEach((cd, c)=>{
-      const cx = -L/2 + T + c*(cwA+T) + cwA/2, fl = BASE + T;
-      const sideMat = mat(BRAND[cd.m.brand].side, { roughness:.7 });
-      const fit = cd.skus.slice(0, per); cd.skus.slice(per).forEach(([sz,col])=> over.push(`${cd.label} ${sz} ${col}`));
-      const lw = Math.min(9, cwA-0.8);
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, labH-0.4), new THREE.MeshBasicMaterial({ map:drawerLabelTex([cd.label, `${fit.length} of ${cd.skus.length} fit`]) }));
+    const columns = [], over = [];
+    helmetColumns().forEach(cd=>{
+      const items = cd.skus.map(([sz,col])=>({ m:cd.m, sz, col }));
+      columns.push({ label:cd.label, items:items.slice(0,per), total:items.length }); over.push(...items.slice(per));
+    });
+    while(columns.length < cols){ const items = over.splice(0, per); columns.push({ label: items.length ? 'Overflow' : 'Open', items, extra:true }); }
+    columns.forEach((cd, c)=>{
+      const cx = -L/2 + T + c*(cwA+T) + cwA/2, fl = BASE + T, lw = Math.min(9, cwA-0.8);
+      const sub = cd.extra ? (cd.items.length ? `${cd.items.length} boxes` : 'Spare column') : `${cd.items.length} of ${cd.total} fit`;
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, labH-0.4), new THREE.MeshBasicMaterial({ map:drawerLabelTex([cd.label, sub]) }));
       lab.position.set(cx, H - T - labH/2, 0.15); f.add(lab);
-      fit.forEach(([sz,col], j)=>{
-        const front = new THREE.MeshStandardMaterial({ map:helmetBoxTex(cd.m, sz, [col, COLS[col]]), roughness:.6 });
+      cd.items.forEach((it, j)=>{
+        const sideMat = mat(BRAND[it.m.brand].side, { roughness:.7 });
+        const front = new THREE.MeshStandardMaterial({ map:helmetBoxTex(it.m, it.sz, [it.col, COLS[it.col]]), roughness:.6 });
         const bx = new THREE.Mesh(new THREE.BoxGeometry(bw, bh-0.12, bd), [sideMat, sideMat, sideMat, sideMat, front, sideMat]);
         bx.position.set(cx + ((j*37)%5-2)*0.08, fl + j*bh + bh/2, -bd/2 - 0.6); bx.rotation.y = ((j*53)%7-3)*0.006; f.add(bx);
       });
     });
-    helmetFit = { per, cols, total: Math.min(per,9)*cols, skus: 63, over };
+    helmetFit = { per, cols, skus: 63, over: over.map(it=>`${it.m.name} ${it.sz} ${it.col}`) };
     addLabel(f, face.label, H);
   }
 
@@ -974,12 +978,19 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     floor.rotation.x = -Math.PI/2; root.add(floor);
     const grid = new THREE.GridHelper(Math.max(TOTAL+240, L+300), 24, 0x4a4e56, 0x42464d); grid.position.y = 0.05; if(!state.photos) root.add(grid);
     for(const z of [-L/2+8, 0, L/2-8]) box(root, TOTAL+12, 0.5, 2.2, 0x8a9099, 0, 0.3, z, { metalness:.5, roughness:.4 });
-    // room wall on the far left: 2" behind the stationary unit (Spacesaver minimum back-wall clearance)
-    { const WALL_H = 120, WT = 5, WL = L + 140, wx = -TOTAL/2 - 2 - WT/2;
-      const wall = box(root, WT, WALL_H, WL, 0xd9d6cf, wx, WALL_H/2, 0, { roughness:.92 });
-      box(root, 0.8, 4.5, WL, 0x3a3b3f, wx + WT/2 + 0.4, 2.25, 0, { roughness:.6 });        // baseboard
-      box(root, 0.6, 1.2, WL, 0xc9c5bc, wx + WT/2 + 0.3, WALL_H - 0.6, 0, { roughness:.8 }); // top trim
+    // room corner like the HBI plan view: wall 2" behind the stationary unit, and a wall behind the back ends of the carriages
+    { const WALL_H = 120, WT = 5, wx = -TOTAL/2 - 2 - WT/2, zb = -L/2 - 0.4 - 3 - WT/2, zf = L/2 + 70;
+      const xr = TOTAL/2 + 110;
+      const lw = zf - (zb - WT/2), lz = (zf + zb - WT/2)/2;
+      box(root, WT, WALL_H, lw, 0xd9d6cf, wx, WALL_H/2, lz, { roughness:.92 });
+      box(root, 0.8, 4.5, lw, 0x3a3b3f, wx + WT/2 + 0.4, 2.25, lz, { roughness:.6 });
+      box(root, 0.6, 1.2, lw, 0xc9c5bc, wx + WT/2 + 0.3, WALL_H - 0.6, lz, { roughness:.8 });
+      const bwid = xr - (wx - WT/2), bxc = (xr + wx - WT/2)/2;
+      box(root, bwid, WALL_H, WT, 0xd9d6cf, bxc, WALL_H/2, zb, { roughness:.92 });
+      box(root, bwid, 4.5, 0.8, 0x3a3b3f, bxc, 2.25, zb + WT/2 + 0.4, { roughness:.6 });
+      box(root, bwid, 1.2, 0.6, 0xc9c5bc, bxc, WALL_H - 0.6, zb + WT/2 + 0.3, { roughness:.8 });
     }
+
     UNITS.forEach((u, i) => {
       const g = new THREE.Group(); root.add(g);
       box(g, u.depth, BASE, L, 0x23262b, u.depth/2, BASE/2, 0);
