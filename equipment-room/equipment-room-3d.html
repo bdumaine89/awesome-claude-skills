@@ -157,24 +157,25 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
   const AISLE = 42.7, FACE_D = 24, T = 1, BASE = 4;
   const WALL_A = [7,10,11,16,17,18,19,22,27,28,29,37];
   const WALL_B = [43,44,47,55,65,71,72,76,78,86,92,94];
+  // west to east: four mobile carriages, then the stationary unit on the far right
   const UNITS = [
-    { name:'Stationary', depth:24, mobile:false, faces:{ east:{kind:'apparel', label:'STATIONARY · APPAREL CUBBIES'} } },
-    { name:'Mobile 1', depth:48, mobile:true, faces:{ west:{kind:'helmets', label:'M1 WEST · HELMET STOCK'}, east:{kind:'stock', label:'M1 EAST · GLOVES (STOCK)', color:0xb3202b} } },
-    { name:'Mobile 2', depth:48, mobile:true, faces:{ west:{kind:'stock', label:'M2 WEST · PANTS (STOCK)', color:0x2a2d33}, east:{kind:'goalie', label:'M2 EAST · GOALIE STATION', color:0x2a2d33} } },
-    { name:'Mobile 3', depth:48, mobile:true, faces:{ west:{kind:'stock', label:'M3 WEST · PROTECTIVE + MISC', color:0x7a818d}, east:{kind:'cubbies', label:'M3 EAST · CUBBY WALL A', numbers:WALL_A} } },
-    { name:'Mobile 4', depth:48, mobile:true, faces:{ west:{kind:'cubbies', label:'M4 WEST · CUBBY WALL B', numbers:WALL_B}, east:{kind:'drawers', label:'M4 EAST · DRAWER BANK'} } },
+    { name:'Mobile 1', depth:48, mobile:true, faces:{ west:{kind:'drawers', label:'M1 WEST · DRAWER BANK'}, east:{kind:'cubbies', label:'M1 EAST · CUBBY WALL B', numbers:WALL_B} } },
+    { name:'Mobile 2', depth:48, mobile:true, faces:{ west:{kind:'cubbies', label:'M2 WEST · CUBBY WALL A', numbers:WALL_A}, east:{kind:'stock', label:'M2 EAST · PROTECTIVE + MISC', color:0x7a818d} } },
+    { name:'Mobile 3', depth:48, mobile:true, faces:{ west:{kind:'goalie', label:'M3 WEST · GOALIE STATION', color:0x2a2d33}, east:{kind:'stock', label:'M3 EAST · PANTS (STOCK)', color:0x2a2d33} } },
+    { name:'Mobile 4', depth:48, mobile:true, faces:{ west:{kind:'stock', label:'M4 WEST · GLOVES (STOCK)', color:0xb3202b}, east:{kind:'helmets', label:'M4 EAST · HELMET STOCK'} } },
+    { name:'Stationary', depth:24, mobile:false, faces:{ west:{kind:'apparel', label:'STATIONARY · APPAREL CUBBIES'} } },
   ];
   const GAPS = [
-    { key:1, label:'A1 · Apparel', note:'Aisle 1 open: stationary apparel cubbies (jackets, pants, hoodies, fleece, 1/4 zips, polos, hats) and Mobile 1 helmet stock.' },
-    { key:2, label:'A2', note:'Aisle 2 open: glove stock and pants stock.' },
-    { key:3, label:'A3 · Goalies', note:'Aisle 3 open: goalie station for #1 and #32 (72" wide, 84" high), plus protective + misc across the aisle.' },
-    { key:4, label:'A4 · Cubbies', note:'Aisle 4 open: all 24 player cubbies, 12 per wall. Every other aisle is closed while this one is open.' },
-    { key:5, label:'Drawers', note:'All carriages pushed toward the stationary unit. The drawer bank on Mobile 4 is the only face you can reach.' },
+    { key:0, label:'Drawers', note:'All carriages pushed toward the stationary unit. The drawer bank on the outside of Mobile 1 is the only face you can reach.' },
+    { key:1, label:'A1 · Cubbies', note:'Aisle 1 open: all 24 player cubbies, 12 per wall. Every other aisle is closed while this one is open.' },
+    { key:2, label:'A2 · Goalies', note:'Aisle 2 open: goalie station for #1 and #32 (72" wide, 84" high), plus protective + misc across the aisle.' },
+    { key:3, label:'A3', note:'Aisle 3 open: pants stock and glove stock.' },
+    { key:4, label:'A4 · Apparel', note:'Aisle 4 open: helmet stock on Mobile 4 and the stationary apparel cubbies (jackets, pants, hoodies, fleece, 1/4 zips, polos, hats).' },
   ];
   const SUM_DEPTH = UNITS.reduce((s,u)=>s+u.depth,0);
   const TOTAL = SUM_DEPTH + AISLE;
 
-  const state = { openDrawers:new Set(), photos:true, shutterOpen:false, gap:4, sections:4, cw:22, ch:26,
+  const state = { openDrawers:new Set(), photos:true, shutterOpen:false, gap:1, sections:4, cw:22, ch:26,
     helmet:{w:11,h:9}, glove:{w:11,h:6}, skate:{w:14,h:6} };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -305,8 +306,8 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     const H = BASE + T + 3*(state.ch+T);
     return { L, H };
   };
-  const unitX = (i, gap) => { let x=0; for(let j=0;j<i;j++) x+=UNITS[j].depth; if(i>=gap) x+=AISLE; return x - TOTAL/2; };
-  const aisleCenter = (gap) => { let x=0; for(let j=0;j<gap;j++) x+=UNITS[j].depth; return x + AISLE/2 - TOTAL/2; };
+  const unitX = (i, gap) => { let x=AISLE; for(let j=0;j<i;j++) x+=UNITS[j].depth; if(i<gap) x-=AISLE; return x - TOTAL/2; };
+  const aisleCenter = (gap) => { let x=AISLE; for(let j=0;j<gap;j++) x+=UNITS[j].depth; return x - AISLE/2 - TOTAL/2; };
 
   // ---- building ----
   let root = null, unitGroups = [], fitResult = null; const shutters = []; const SHUTTER_OPEN = 0.03;
@@ -903,7 +904,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
       box(g, u.depth, 0.8, L+0.6, 0xb7bcc3, u.depth/2, H+0.4, 0);
       // spine / back panel
       if(u.mobile) box(g, 0.6, H-BASE, L, 0xa9aeb5, u.depth/2, BASE+(H-BASE)/2, 0);
-      else box(g, 0.6, H-BASE, L, 0xa9aeb5, 0.3, BASE+(H-BASE)/2, 0);
+      else box(g, 0.6, H-BASE, L, 0xa9aeb5, u.faces.west ? u.depth-0.3 : 0.3, BASE+(H-BASE)/2, 0);
       // branded end panels
       const front = new THREE.Mesh(new THREE.PlaneGeometry(u.depth, H), endMaterial(i, u, H, false)); front.position.set(u.depth/2, H/2, L/2+0.35); g.add(front);
       const back = new THREE.Mesh(new THREE.PlaneGeometry(u.depth, H), endMaterial(i, u, H, true)); back.rotation.y = Math.PI; back.position.set(u.depth/2, H/2, -L/2-0.35); g.add(back);
@@ -995,7 +996,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     const { L, H } = dimsFor();
     document.querySelectorAll('#views button').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.view===v)));
     if(v==='overview') moveCamera(new THREE.Vector3(TOTAL*0.3, 230, L/2+330), new THREE.Vector3(-TOTAL*0.14, 30, 0));
-    if(v==='walk' && state.gap===1){ const fx = aisleCenter(1) - AISLE/2; moveCamera(new THREE.Vector3(fx+38, 52, L/2+60), new THREE.Vector3(fx, 42, 0)); } else if(v==='walk' && state.gap===5){ const fx = aisleCenter(5) - AISLE/2; moveCamera(new THREE.Vector3(fx+95, 52, L*0.18), new THREE.Vector3(fx, 40, 0)); }
+    if(v==='walk' && state.gap===4){ const fx = aisleCenter(4) + AISLE/2; moveCamera(new THREE.Vector3(fx-38, 52, L/2+60), new THREE.Vector3(fx, 42, 0)); } else if(v==='walk' && state.gap===0){ const fx = aisleCenter(0) + AISLE/2; moveCamera(new THREE.Vector3(fx-95, 52, L*0.18), new THREE.Vector3(fx, 40, 0)); }
     else if(v==='walk'){ const ax = aisleCenter(state.gap); moveCamera(new THREE.Vector3(ax, 62, L/2+46), new THREE.Vector3(ax, 44, -L/2+8)); }
     if(v==='top') moveCamera(new THREE.Vector3(0, 520, 1), new THREE.Vector3(0, 0, 0));
   }
@@ -1049,7 +1050,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
       if(o){ const k = o.userData.drawerKey; state.openDrawers.has(k) ? state.openDrawers.delete(k) : state.openDrawers.add(k); return; } }
     let o = hits[0].object; while(o && o.userData.unitIndex===undefined) o = o.parent; if(!o) return;
     const i = o.userData.unitIndex; const local = o.worldToLocal(hits[0].point.clone());
-    let gap = local.x < UNITS[i].depth/2 ? i : i+1; if(gap < 1) gap = 1;
+    let gap = local.x < UNITS[i].depth/2 ? i : i+1; gap = Math.max(0, Math.min(UNITS.length-1, gap));
     openGap(gap);
   });
   renderer.domElement.addEventListener('pointermove', e=>{ if(e.buttons) return;
@@ -1073,7 +1074,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
 
   function setShutter(open){
     state.shutterOpen = open;
-    if(open && state.gap !== 5) openGap(5);
+    if(open && state.gap !== 0) openGap(0);
     const b = document.getElementById('shutterBtn');
     b.textContent = open ? 'Close roll-top' : 'Open roll-top'; b.setAttribute('aria-pressed', String(open));
   }
@@ -1097,7 +1098,7 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     try{ await Promise.race([ document.fonts.load('700 40px "Barlow Condensed"'), new Promise(r=>setTimeout(r,1500)) ]); }catch(e){}
     await new Promise(res=>{ const im = new Image(); im.onload = ()=>{ boxImg = im; res(); }; im.onerror = res; im.src = PHOTOS.bauerBox; });
     await Promise.all([['flamesPanel', v=>panelImg=v], ['flamesSide', v=>sideImg=v]].map(([k,set])=> new Promise(res=>{ const im = new Image(); im.onload = ()=>{ set(im); res(); }; im.onerror = res; im.src = PHOTOS[k]; })));
-    resize(); syncSecButtons(); build(); openGap(4);
+    resize(); syncSecButtons(); build(); openGap(1);
     // built-in logo; a logo uploaded in this browser takes its place
     let saved = null; try{ saved = localStorage.getItem('erm-logo'); }catch(e){}
     applyLogo(saved || PHOTOS.flamesLogo, false);
