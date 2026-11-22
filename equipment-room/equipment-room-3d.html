@@ -898,6 +898,12 @@ const PHOTOS = {"7": "data:image/webp;base64,UklGRm6kAABXRUJQVlA4IGKkAABw1QGdASr
     floor.rotation.x = -Math.PI/2; root.add(floor);
     const grid = new THREE.GridHelper(Math.max(TOTAL+240, L+300), 24, 0x4a4e56, 0x42464d); grid.position.y = 0.05; if(!state.photos) root.add(grid);
     for(const z of [-L/2+8, 0, L/2-8]) box(root, TOTAL+12, 0.5, 2.2, 0x8a9099, 0, 0.3, z, { metalness:.5, roughness:.4 });
+    // room wall on the far right: 2" behind the stationary unit (Spacesaver minimum back-wall clearance)
+    { const WALL_H = 120, WT = 5, WL = L + 140, wx = TOTAL/2 + 2 + WT/2;
+      const wall = box(root, WT, WALL_H, WL, 0xd9d6cf, wx, WALL_H/2, 0, { roughness:.92 });
+      box(root, 0.8, 4.5, WL, 0x3a3b3f, wx - WT/2 - 0.4, 2.25, 0, { roughness:.6 });        // baseboard
+      box(root, 0.6, 1.2, WL, 0xc9c5bc, wx - WT/2 - 0.3, WALL_H - 0.6, 0, { roughness:.8 }); // top trim
+    }
     UNITS.forEach((u, i) => {
       const g = new THREE.Group(); root.add(g);
       box(g, u.depth, BASE, L, 0x23262b, u.depth/2, BASE/2, 0);
