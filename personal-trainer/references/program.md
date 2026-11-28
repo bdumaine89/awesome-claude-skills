@@ -25,7 +25,7 @@ Load progression within a block: about +3% a week (wk1 → wk3), then deload. At
 | **D2 Pull + Rotation** | A: Lat Pulldown + Woodchop · B: Chest-Supported Row + Landmine Press · C: MB Scoop Toss + 90/90 Hip IR Lift-off | A: **Pull-up** + Woodchop · rest same | A: Pull-up + **MB Scoop Toss** · B: CS Row + Landmine · C: Woodchop + Face Pull | A: Pulldown + Cable Lift · B: 1-Arm Cable Row + Landmine · C: MB Toss + 90/90 Hip IR |
 | **D3 Lower · Hip + Push** | A: RDL + Dead Bug · B: Lateral Lunge + Incline DB · C: Hip Thrust + Face Pull | A: **Trap-Bar DL** + Dead Bug · B: SL-RDL + Incline DB · C: Hip Thrust + Face Pull | A: Trap-Bar DL + **Broad Jump** · B: SL-RDL + Incline DB · C: Hip Thrust + Push-up | A: Trap-Bar DL + Dead Bug · B: Lateral Lunge + Push-up · C: Hip Thrust + Face Pull |
 | **D4 Athletic + Conditioning** | A: Box Jump + Skater Bound · B: SL-RDL + 1-Arm Cable Row · C: Suitcase Carry + Bike 6×30/45 | A: Broad Jump + Skater · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Skater + MB Slam · B: Lateral Lunge + Cable Row · C: Carry + Bike | A: Box Jump + Skater · B: SL-RDL + CS Row · C: Carry + Bike |
-| D5 Recovery | Zone 2 for 25 min at HR 110–128 (top of his Athlytic Zone 2 of 102–118, into low Zone 3; talk-test pace) + 5 min mobility flow. The default on hockey-free weeks; required on red-readiness days. | | | |
+| D5 Recovery | 5 min mobility flow + 90/90 hip IR, then a 20 min easy walk + dead bugs. Athletes whose job already logs hours of Zone 2 a day gain little from extra Zone 2 cardio. | | | |
 
 Warm-up (5 min): 90/90 switches, world's greatest stretch, hip airplanes, prone Y-T raises (no weight), neck 4-way isometrics, pogo hops, then 2 ramp-up sets of A1.
 
@@ -35,7 +35,7 @@ Warm-up (5 min): 90/90 switches, world's greatest stretch, hip airplanes, prone 
 
 ## Starting loads (base = Block 1, 10–12 reps @ RPE 7)
 
-These are estimates for a trained, 182 lb rec athlete. **Calibrate in week 1** in the app (Program → Calibrate starting loads).
+These are estimates for a trained, ~180 lb rec athlete. **Calibrate in week 1** in the app (Program → Calibrate starting loads).
 
 | Exercise | Work gym | Hotel swap | Hotel load |
 |---|---|---|---|
@@ -90,3 +90,16 @@ Enter Athlytic's recovery % each morning. The current week's sessions adjust aut
 - No Athlytic number: the app estimates readiness from HRV (log-scaled, 3-day mean), resting HR and sleep against a 30-day baseline.
 - **Game day (rec hockey):** a D1/D3 lower session is fine in the morning if the game is in the evening, but skip the jumps. No lower session the morning after a late game; move D4 instead.
 - **Golf day:** do rotation work (D2) at least 24 h before a round, not the same morning.
+
+## Express sessions (adherence rule)
+On long work or travel days, do the **Express** version (supersets A and B only, 2 rounds, about 15 min) instead of skipping. A short session keeps the habit and most of the stimulus; a skipped one keeps neither.
+
+## Restarting after missed weeks
+If no sessions were logged, restart at Week 1 rather than jumping ahead (the app offers this). Don't stack missed sessions into one week.
+
+## Evidence behind the key choices
+- **Copenhagen adduction:** 41% fewer groin problems in a cluster RCT of 35 semi-pro football teams (Harøy et al., *Br J Sports Med* 2019; doi:10.1136/bjsports-2017-098937).
+- **Nordic hamstring curl:** about 50% fewer hamstring injuries (meta-analysis, 8,459 athletes; van Dyk et al., *BJSM* 2019; doi:10.1136/bjsports-2018-100045). Low volume is enough.
+- **Recovery/HRV-guided training:** strength and body-composition gains similar to predefined training, with fewer high-intensity days (DeBlauw et al., *J Funct Morphol Kinesiol* 2021; Addleman et al., 2024 review). It has a small edge for endurance (Manresa-Rocamora et al., *IJERPH* 2021). So autoregulation **trims** sessions; it doesn't cancel them, except on red.
+- **Protein in a deficit:** 2.3–3.1 g/kg of fat-free mass for resistance-trained athletes in a cut (Helms et al., *IJSNEM* 2014); higher protein reduced lean-mass loss (Mettler et al., *MSSE* 2010).
+- **Lift through the cut:** resistance exercise offsets the drop in muscle protein synthesis caused by energy restriction (Hector et al., *FASEB J* 2018).

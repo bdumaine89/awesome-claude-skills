@@ -90,6 +90,6 @@ ios/
 
 ## How it relates to the web app
 
-The web app ([Blue Line Training](https://claude.ai/artifact/C5pWHH1GPtsDsaGXa8t4em)) is still the source of truth for Claude chat logging. This app ports its logic one-to-one, with the same exercise IDs, log keys (`w<week>d<day>`), set shape, load rules and energy math, so the two produce the same numbers from the same inputs. The data stores are separate today.
+The web app ([Blue Line Training]((your Blue Line Training artifact URL))) is still the source of truth for Claude chat logging. This app ports its logic one-to-one, with the same exercise IDs, log keys (`w<week>d<day>`), set shape, load rules and energy math, so the two produce the same numbers from the same inputs. The data stores are separate today.
 
 **Future sync option.** `SessionLog`, `Profile` and the meal fields already match the web app's JSON documents (`log/*`, `settings/profile`, `days/*`). A sync would need a small authenticated backend, or an export/import file through iCloud Drive, that maps SwiftData records to those documents, using last-write-wins on `completedAt` or `if_version`. The native app could then retire the Health Auto Export step, because it reads HealthKit directly.

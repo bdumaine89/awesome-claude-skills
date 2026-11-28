@@ -140,7 +140,8 @@ ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .hero-t{display:flex;flex-direction:column;gap:10px;min-width:0}
 .gauge{width:100%;height:auto;display:block}
 .gnum{font-family:var(--f-mono);font-size:30px;font-weight:600;fill:var(--ink)}
-.rings{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px}
+.rings{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px}
+@media (max-width:420px){.ringc svg{width:60px;height:60px}.ringc{padding:8px;gap:8px}.ringc b{font-size:14px}}
 .ringc{display:flex;align-items:center;gap:10px;background:var(--board);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
 .ringc div{display:flex;flex-direction:column;min-width:0}.ringc b{font-size:16px;font-weight:600;white-space:nowrap}.ringc span{font-size:12px;color:var(--muted)}
 @media (prefers-reduced-motion:no-preference){.gfill{animation:gfill 1.1s cubic-bezier(.2,.7,.2,1) both}@keyframes gfill{from{stroke-dashoffset:var(--from)}}}
@@ -227,6 +228,7 @@ const EX={
  bike:{n:"Bike Intervals (Assault/Echo)",h:"Bike / Treadmill Incline Intervals",u:"time",hu:"time",reps:"6 × 30 s hard / 45 s easy",cue:"Shift-length efforts. Skip on weeks with 2+ hockey games; do D5 Zone 2 on hockey-free weeks. RPE 9 on the work, true easy on recovery."},
  z2:{n:"Zone 2 Cardio",h:"Zone 2 Cardio (bike/incline walk)",u:"time",hu:"time",reps:"25 min @ HR 110–128",cue:"Talk-test pace: full sentences, nasal breathing. Top of your Athlytic Zone 2 (102–118) into low Zone 3. Watch: Workout → Indoor Cycle, set a 110–128 heart-rate alert."},
  hipir:{n:"90/90 Hip IR Lift-off",h:"90/90 Hip IR Lift-off",u:"time",hu:"time",reps:"5 × 5 s/side",cue:"Sit 90/90, torso tall, lift the back knee and foot off the floor by internally rotating the back hip. Hold 5 s. Lead-hip IR for the golf downswing; hockey hips lose IR first."},
+ walk20:{n:"Easy Walk",h:"Easy Walk (treadmill, concourse or outside)",u:"time",hu:"time",reps:"20 min easy",cue:"Conversational pace. If your job keeps you on your feet for hours, you already get plenty of Zone 2, so this is for blood flow and recovery, not fitness."},
  mobflow:{n:"Mobility Flow",h:"Mobility Flow",u:"time",hu:"time",reps:"5 min",cue:"Couch stretch, 90/90, T-spine open-books, thread the needle."},
 };
 const BLOCKS=[
@@ -259,12 +261,12 @@ const BLOCKS=[
    {n:"Lower · Hip + Push",ss:[["trapdl","main","deadbug","core"],["latlunge","acc","pushup","acc"],["hipthrust","acc","facepull","acc"]]},
    {n:"Athletic + Conditioning",ss:[["boxjump","power","skater","power"],["slrdl","acc","csrow","acc"],["carry","core","bike","cond"]]}]},
 ];
-const RECOVERY_DAY={n:"Recovery · Zone 2 + Mobility",ss:[["z2","cond","mobflow","core"]]};
+const RECOVERY_DAY={n:"Recovery · Mobility + Walk",ss:[["mobflow","core","hipir","core"],["walk20","cond","deadbug","core"]]};
 const DEFAULT_REPS={power:"4",core:"10/side",cond:"",acc:"",main:""};
 const ACT={hockey:{n:"Rec hockey",met:7,min:60},golfwalk:{n:"Golf, 18 walking",met:4.8,min:240},golfcart:{n:"Golf, 18 cart",met:2.8,min:240},range:{n:"Driving range",met:3,min:45},strength:{n:"Strength session",met:4.5,min:30},z2:{n:"Zone 2 cardio",met:6,min:30},walk:{n:"Walk",met:3.5,min:30}};
 
 /* ================= STATE ================= */
-const DEF_SETTINGS={start:"2026-11-16",age:36,heightCm:172.7,startLb:182,goalLb:170,sex:"m",loc:"gym",hotelMax:50,deficit:500,protein:175,fat:70,neat:1.4,blocksDone:{},calib:{}};
+const DEF_SETTINGS={start:"2026-11-16",age:35,heightCm:175,startLb:180,goalLb:170,bio:"",homeCity:"",coachNotes:"",sex:"m",loc:"gym",hotelMax:50,deficit:500,protein:175,fat:70,neat:1.4,blocksDone:{},calib:{}};
 const S={settings:{...DEF_SETTINGS},logs:{},days:{},db:null,sample:null,images:false,dict:null,dl:null,ready:false,offline:false,
   view:{week:null,day:null,fuelDate:null,lift:null},draftMeal:null,coachOut:"",busy:{},agentLog:[],toolMax:0,tts:null,pilot:null};
 const LS="bluelinetraining.v1";
@@ -313,7 +315,8 @@ const logKey=(w,d)=>"w"+w+"d"+d;
 function sessionItems(w,d){
   const p=dayPlan(w,d),items=[{id:"warm",role:"warm",ss:"W"}];const sw=(S.logs[logKey(w,d)]||{}).swaps||{};
   const mk=(id,role,tag,n)=>({id:EX[sw[id]]?sw[id]:id,orig:EX[sw[id]]?id:null,role,ss:tag,slot:tag+n});
-  p.ss.forEach((s,i)=>{const tag="ABC"[i];items.push(mk(s[0],s[1],tag,"1"),mk(s[2],s[3],tag,"2"))});
+  const ex=d!==5&&(S.logs[logKey(w,d)]||{}).express;
+  p.ss.forEach((s,i)=>{const tag="ABC"[i];if(ex&&i>1)return;items.push(mk(s[0],s[1],tag,"1"),mk(s[2],s[3],tag,"2"))});
   return items;
 }
 /* ===== Recovery autoregulation (Athlytic recovery % → today's session) ===== */
@@ -339,6 +342,9 @@ function currentTier(){if(S.settings.autoReg===false)return null;const k=today()
   _ct={k,t:Date.now(),v};return v}
 function tierFor(w,d){if(S.settings.autoReg===false||d===5)return null;const L=S.logs[logKey(w,d)];if(L&&L.tier)return L.tier;if(L&&L.completedAt)return null;if(w!==curWeek())return null;return currentTier()}
 function rx(w,d,it){
+  const r=rxAuto(w,d,it);if(it.role!=="warm"&&d!==5&&(S.logs[logKey(w,d)]||{}).express)r.sets=Math.min(r.sets,2);return r;
+}
+function rxAuto(w,d,it){
   const r=rxBase(w,d,it),T=tierFor(w,d);if(!T||it.role==="warm")return r;
   if(isDeload(w)&&T.key!=="red")return r;
   if(T.mainSets&&it.role==="main")r.sets+=T.mainSets;
@@ -531,6 +537,7 @@ function vProgram(){
    <div class="row between"><div><div class="eyebrow">Week ${w} · Block ${bi+1} ${esc(B.n)}${isDeload(w)?" · Deload: −1 set, −15% load, RPE 6":""}${isTest(w)?" · Test week: last set of each main lift is AMRAP":""}</div>
    <h2>${d===5?esc(p.n):"Day "+d+" · "+esc(p.n)}</h2></div><span class="pill ${pr.done===pr.total?"go":"blue"}">${pr.done}/${pr.total}</span></div>
    <p class="muted small" style="margin:0">${esc(B.goal)}</p>${recoveryCard(w,d)}
+   ${d!==5?`<label class="row small" style="gap:8px"><input type="checkbox" data-act="express" data-w="${w}" data-d="${d}" ${L.express?"checked":""} style="width:22px;height:22px;min-height:0"> <span><b>Express · about 15 min</b>: supersets A and B only, 2 rounds each. Use it on long rink days instead of skipping.</span></label>`:""}
    <div class="row between">${sessLoc(loc)}<div class="row" role="group" aria-label="Day">${[1,2,3,4,5].map(x=>`<button class="seg" data-act="open" data-w="${w}" data-d="${x}" aria-pressed="${x===d}">${x===5?"Rec":"D"+x}</button>`).join("")}</div></div>
    <div class="clockbar"><div><div class="eyebrow">Session clock</div><div class="clock" id="clock" role="timer" aria-label="Session time left">30:00</div></div>
      <div class="row" style="gap:6px;flex-wrap:nowrap"><button class="blue" data-act="p-start" data-w="${w}" data-d="${d}">${S.tts?"Voice":"Guided"}</button><button data-act="clock" aria-pressed="${clock.run}">${clock.run?"Pause":"Start"}</button><button data-act="rest" data-s="${restSecs(B.s.main.rest)}">Rest ${restSecs(B.s.main.rest)}s</button></div></div>
@@ -547,7 +554,13 @@ function vProgram(){
        <div class="extools">${figure(it.id,loc==="hotel",76)}<a class="demo" href="${demoURL(nm)}" target="_blank" rel="noopener" aria-label="Watch a demo of ${esc(nm)} (opens YouTube)">▶ Watch demo</a></div><details class="cue" style="border:0;padding:0"><summary>Coaching cue</summary>${esc(e.cue)}</details></div>`});
     html+=`</div>`}
   html+=`<div class="row"><button class="blue" data-act="completeall" data-w="${w}" data-d="${d}">Check off whole session</button><button class="ghost" data-act="resetsess" data-w="${w}" data-d="${d}" style="margin-left:auto">Clear checks</button></div></section>`+map;
-  html+=`<section class="panel"><h3>Calibrate starting loads</h3><p class="small muted" style="margin:0">Starting loads are estimates for a trained 182 lb rec athlete. If week 1 feels off, enter the load you could do for 10–12 reps at RPE 7 and everything after it rescales.</p>
+  html+=`<section class="panel"><details><summary style="font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:18px;color:var(--ink)">Why this program · the evidence</summary><ol class="steps small" style="margin-top:10px">
+   <li><b>Copenhagen adduction</b> cut groin problems by 41% in a cluster RCT of 35 semi-pro football teams (Harøy et al., BJSM 2019). Hockey's #1 soft-tissue injury is the adductors.</li>
+   <li><b>Nordic hamstring curls</b> roughly halve hamstring injuries (meta-analysis of 8,459 athletes, van Dyk et al., BJSM 2019). Low volume works, so 3–6 reps is enough.</li>
+   <li><b>Recovery-guided training</b> matched predefined programs for strength and body composition with fewer hard days (DeBlauw et al., 2021; Addleman et al., 2024). Its edge is mostly in endurance (Manresa-Rocamora et al., 2021). That's why a yellow day trims load instead of cancelling the session.</li>
+   <li><b>High protein during a cut</b> preserves lean mass in resistance-trained people (Helms et al., 2014: 2.3–3.1 g/kg of lean mass; Mettler et al., 2010). Your 175 g is about 2.8 g/kg of lean mass.</li>
+   <li><b>Lifting during the deficit</b> blunts the drop in muscle protein synthesis that dieting causes (Hector et al., FASEB J 2018). Skipping lifts while cutting means losing muscle.</li></ol></details></section>`;
+  html+=`<section class="panel"><h3>Calibrate starting loads</h3><p class="small muted" style="margin:0">Starting loads are estimates for a trained ${S.settings.startLb} lb rec athlete. If week 1 feels off, enter the load you could do for 10–12 reps at RPE 7 and everything after it rescales.</p>
    <div class="tbl"><table class="t"><tr><th>Exercise</th><th>Gym base</th><th>Hotel base</th></tr>${Object.entries(EX).filter(([k,e])=>e.g||e.hl).map(([k,e])=>`<tr><td>${esc(e.n)}</td><td><input type="number" inputmode="decimal" aria-label="${esc(e.n)} gym base load" style="width:80px" placeholder="${e.g||""}" value="${S.settings.calib[k]??""}" data-act="calib" data-k="${k}" ${e.g?"":"disabled"}> <span class="muted small">${esc(fmtLoad("",e.u).trim())}</span></td><td><input type="number" inputmode="decimal" aria-label="${esc(e.h)} hotel base load" style="width:80px" placeholder="${e.hl||""}" value="${S.settings.calib[k+"_h"]??""}" data-act="calib" data-k="${k}_h" ${e.hl?"":"disabled"}></td></tr>`).join("")}</table></div></section>`;
   return html;
 }
@@ -627,7 +640,7 @@ function vBody(){
    <label class="f">Athlytic load ratio<input type="number" step="0.1" inputmode="decimal" data-act="dayfield" data-f="loadRatio" value="${D.loadRatio??""}"></label></div>
    <p class="small muted" style="margin:0">If you enter Athlytic's number, it wins. Without it, readiness is estimated from HRV and resting HR against your own 30-day baseline, plus sleep.</p></section>
   <section class="panel"><h3>Profile</h3><div class="grid4">
-   ${[["age","Age"],["heightCm","Height (cm)"],["startLb","Start weight (lb)"],["goalLb","Goal (lb)"],["deficit","Daily deficit (kcal)"],["protein","Protein (g)"],["fat","Fat (g)"],["neat","Activity multiplier"],["hotelMax","Hotel max DB (lb)"],["start","Program start (YYYY-MM-DD)"]].map(([k,l])=>`<label class="f">${l}<input data-act="setting" data-k="${k}" value="${esc(S.settings[k])}" ${k==="start"?'type="date"':'type="number" step="any" inputmode="decimal"'}></label>`).join("")}</div>
+   ${[["age","Age"],["heightCm","Height (cm)"],["startLb","Start weight (lb)"],["goalLb","Goal (lb)"],["deficit","Deficit below maintenance (kcal)"],["protein","Protein (g)"],["fat","Fat (g)"],["neat","Activity multiplier"],["hotelMax","Hotel max DB (lb)"],["start","Program start (YYYY-MM-DD)"]].map(([k,l])=>`<label class="f">${l}<input data-act="setting" data-k="${k}" value="${esc(S.settings[k])}" ${k==="start"?'type="date"':'type="number" step="any" inputmode="decimal"'}></label>`).join("")}</div>
    <p class="small muted" style="margin:0">Age is set to 36 as a guess. Fix it: it changes your BMR by about 5 kcal per year.</p></section>`;
 }
 function weightChart(ser){
@@ -690,12 +703,13 @@ const PAT={
  pallof:{prop:"handle",...P2({e:[66,50],w:[66,44]},{e:[78,44],w:[94,44]})},
  rotate:{prop:"ball",front:true,...P2({e:[44,22],w:[34,10],k:[52,85],a:[46,108],k2:[68,85],a2:[74,108],e2:[50,24],w2:[36,10]},{e:[74,60],w:[86,80],k:[52,85],a:[46,108],k2:[68,85],a2:[74,108],e2:[70,62],w2:[84,80]})},
  jump:{prop:"none",...P2({h:[72,48],n:[66,57],e:[54,64],w:[44,72],p:[54,80],k:[70,85],a:[62,108]},{h:[62,4],n:[62,15],e:[64,2],w:[66,-8],p:[62,45],k:[64,68],a:[62,90]})},
+ walk:{prop:"none",...P2({k:[67,85],a:[71,108],k2:[54,85],a2:[47,108],e:[62,48],w:[66,62],e2:[58,48],w2:[54,62]},{k:[54,85],a:[47,108],k2:[67,85],a2:[71,108],e:[58,48],w:[54,62],e2:[62,48],w2:[66,62]})},
  carry:{prop:"db",...P2({k:[67,85],a:[71,108],k2:[54,85],a2:[47,108],e:[60,48],w:[60,64]},{k:[54,85],a:[47,108],k2:[67,85],a2:[71,108],e:[60,48],w:[60,64]})},
  bike:{prop:"none",bike:true,...P2({h:[62,22],n:[58,33],p:[48,62],e:[69,45],w:[80,52],k:[69,57],a:[66,82]},{h:[62,22],n:[58,33],p:[48,62],e:[69,45],w:[80,52],k:[63,75],a:[55,96]})},
  facepull:{prop:"handle",...P2({e:[74,42],w:[90,38]},{e:[54,30],w:[66,24]})},
  mob:{prop:"none",...P2({h:[56,58],n:[56,69],e:[50,84],w:[46,98],p:[56,100],k:[77,94],a:[86,105],k2:[40,105],a2:[28,97]},{h:[56,58],n:[56,69],e:[50,84],w:[46,98],p:[56,100],k:[77,94],a:[86,105],k2:[40,96],a2:[28,90]})},
 };
-const EXPAT={warm:"mob",squat:"squat",fsquat:"squat",trapdl:"hinge",rdl:"hinge",bss:"lunge",latlunge:"lunge",slrdl:"hinge",hipthrust:"thrust",nordic:"nordic",copen:"plank",boxjump:"jump",skater:"jump",broadjump:"jump",dbbench:"bench",incdb:"bench",landmine:"press",pushup:"pushup",pullup:"pull",pulldown:"pull",csrow:"row",cablerow:"row",facepull:"facepull",pallof:"pallof",chop:"rotate",lift:"rotate",mbtoss:"rotate",mbslam:"hinge",deadbug:"deadbug",sideplank:"plank",carry:"carry",bike:"bike",z2:"bike",mobflow:"mob",hipir:"mob"};
+const EXPAT={walk20:"walk",warm:"mob",squat:"squat",fsquat:"squat",trapdl:"hinge",rdl:"hinge",bss:"lunge",latlunge:"lunge",slrdl:"hinge",hipthrust:"thrust",nordic:"nordic",copen:"plank",boxjump:"jump",skater:"jump",broadjump:"jump",dbbench:"bench",incdb:"bench",landmine:"press",pushup:"pushup",pullup:"pull",pulldown:"pull",csrow:"row",cablerow:"row",facepull:"facepull",pallof:"pallof",chop:"rotate",lift:"rotate",mbtoss:"rotate",mbslam:"hinge",deadbug:"deadbug",sideplank:"plank",carry:"carry",bike:"bike",z2:"bike",mobflow:"mob",hipir:"mob"};
 const HOTPAT={pallof:"plank",facepull:"row",pulldown:"pull"};
 const reduceMotion=()=>{try{return matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}};
 function figure(exId,hotel,size){
@@ -731,7 +745,7 @@ async function scanCalendar(){
     const ev=(data.events||[]).map(e=>({start:(e.start&&(e.start.date||e.start.dateTime)||"").slice(0,10),end:(e.end&&(e.end.date||e.end.dateTime)||"").slice(0,10),type:e.eventType,title:String(e.summary||"").slice(0,120),loc:String(e.location||"").slice(0,80),notes:String(e.description||"").slice(0,400)}));
     if(!ev.length){S.scanMsg="No events in the next 75 days.";S.busy.scan=false;render();return}
     S.scanMsg="Finding road trips…";render();
-    const prompt=`You extract ROAD TRIPS (days away from home, sleeping in hotels) for an NHL team's assistant equipment manager based in Calgary, from his calendar. Evidence can be: out-of-office events, events in other cities, flights/hotels, or notes that mention a road trip with dates (e.g. "team is on the road Nov 22-Dec 2", "the Dec 9 to Dec 22 road trip"). Today is ${today()}; resolve years accordingly. Merge overlapping mentions. Do not invent trips with no evidence.\nReturn ONLY JSON: {"trips":[{"start":"YYYY-MM-DD","end":"YYYY-MM-DD","label":"short label","evidence":"short quote"}]}\nEVENTS:\n${JSON.stringify(ev)}`;
+    const prompt=`You extract ROAD TRIPS (days away from home, sleeping in hotels) for ${S.settings.bio?"this athlete ("+S.settings.bio+")":"this athlete"}, based in ${S.settings.homeCity||"their home city"}, from their calendar. Evidence can be: out-of-office events, events in other cities, flights/hotels, or notes that mention a road trip with dates (e.g. "team is on the road Nov 22-Dec 2", "the Dec 9 to Dec 22 road trip"). Today is ${today()}; resolve years accordingly. Merge overlapping mentions. Do not invent trips with no evidence.\nReturn ONLY JSON: {"trips":[{"start":"YYYY-MM-DD","end":"YYYY-MM-DD","label":"short label","evidence":"short quote"}]}\nEVENTS:\n${JSON.stringify(ev)}`;
     const out=await S.sample.json(prompt,{cache:false,modelTier:"default"});
     const ok=(out&&out.trips||[]).filter(t=>/^\d{4}-\d{2}-\d{2}$/.test(t.start)&&/^\d{4}-\d{2}-\d{2}$/.test(t.end)&&t.end>=t.start&&!trips().some(x=>x.start===t.start&&x.end===t.end));
     S.tripProposals=ok;S.scanMsg=ok.length?`Found ${ok.length} possible road trip${ok.length>1?"s":""}. Confirm the right ones.`:"No new road trips found in your calendar.";
@@ -770,13 +784,15 @@ function vToday(){
   const nextTrip=trips().filter(x=>x.start>t).sort((a,b)=>a.start<b.start?-1:1)[0];
   return `
   ${trip?`<div class="roadbar"><b>On the road · ${esc(trip.label||"road trip")}</b><span>Day ${Math.round((parseD(t)-parseD(trip.start))/864e5)+1} of ${Math.round((parseD(trip.end)-parseD(trip.start))/864e5)+1} · hotel versions on${rw?" · road-week priority D1 → D3 → D2":""}</span></div>`:nextTrip&&nextTrip.start<=addDays(t,7)?`<div class="roadbar soon"><b>Road trip in ${Math.round((parseD(nextTrip.start)-parseD(t))/864e5)} days</b><span>${esc(nextTrip.label||"")} · get Day 1 and Day 3 done before you leave</span></div>`:""}
+  ${(()=>{const any=Object.values(S.logs).some(L=>L.ex&&Object.values(L.ex).some(x=>x&&(x.done||(x.sets||[]).some(q=>q&&q.done))));if(any||curWeek()<2)return "";const dow=(parseD(today()).getDay()+6)%7,mon=dow===0?today():addDays(today(),7-dow);
+    return `<div class="roadbar soon"><b>No sessions logged since the program started on ${esc(fmtD(S.settings.start))}</b><span>Restart at Week 1 on ${esc(fmtD(mon))} instead of jumping into Week ${curWeek()}. Block 1 is where the tendons and patterns get built.</span><div class="row" style="margin-top:6px"><button class="seg primary" data-act="restart" data-date="${mon}">Restart ${esc(fmtD(mon))}</button><button class="seg ghost" data-act="restart" data-date="${today()}">Restart today</button></div></div>`})()}
   ${lowStreak()>=3&&S.settings.autoReg!==false&&!isDeload(ns.w)?`<div class="roadbar" style="background:var(--warn);color:var(--go-ink)"><b>Recovery under 50% three days running</b><span>Your body is asking for the deload now, not at week ${BLOCKS[blockOf(ns.w)].w[1]}.</span><div class="row" style="margin-top:6px"><button class="seg" data-act="deloadnow" data-w="${ns.w}">Make this week the deload</button></div></div>`:""}
   <section class="hero">
     <div class="hero-g">${arcGauge(R&&R.score,RB.cls)}<div class="eyebrow" style="text-align:center">Readiness${R&&R.src?" · "+esc(R.src):""}</div></div>
     <div class="hero-t"><div class="eyebrow">${esc(fmtD(t))} · Week ${ns.w}/16 · ${esc(BLOCKS[blockOf(ns.w)].n)}${isDeload(ns.w)?" · Deload":""}</div>
       <h2>${red?"Recovery day":ns.d===5?"Week done · optional recovery":"Day "+ns.d+" · "+esc(p.n)}</h2>
       <p class="muted" style="margin:0">${esc(RB.advice)}</p>
-      <div class="row"><button class="primary" data-act="open" data-w="${ns.w}" data-d="${sd}">${pr.done?"Resume":"Start session"}</button><button class="blue" data-act="p-start" data-w="${ns.w}" data-d="${sd}">${S.tts?"Voice coach":"Guided mode"}</button>${locToggle()}</div>
+      <div class="row"><button class="primary" data-act="open" data-w="${ns.w}" data-d="${sd}">${pr.done?"Resume":"Start session"}</button>${sd!==5&&!pr.done?`<button data-act="express-start" data-w="${ns.w}" data-d="${sd}">Express 15</button>`:""}<button class="blue" data-act="p-start" data-w="${ns.w}" data-d="${sd}">${S.tts?"Voice coach":"Guided mode"}</button>${locToggle()}</div>
       <label class="f" style="flex-direction:row;align-items:center;gap:8px">Athlytic recovery % <input id="recToday" type="number" min="0" max="100" inputmode="numeric" style="width:84px" value="${D.recovery??""}" data-act="recovery" data-date="${t}"></label></div>
   </section>
   <section class="rings">
@@ -791,6 +807,7 @@ function vToday(){
     <div class="vol">${Object.entries(vol).map(([m,v])=>`<div class="macro"><div class="row"><span>${m}</span><span class="mono">${v.done} / ${v.plan} sets</span></div><div class="bar"><i style="width:${v.plan?Math.round(v.done/v.plan*100):0}%"></i></div></div>`).join("")}</div></section>
   <section class="panel">
     <div class="row between"><h3>Quick log</h3><a href="#fuel" class="small">Full nutrition →</a></div>
+    ${(()=>{const ds=Object.keys(S.days).filter(k=>(S.days[k].meals||[]).length).sort(),last=ds[ds.length-1];if(!last||last===t)return "";const n=Math.round((parseD(t)-parseD(last))/864e5);return n>=2?`<p class="small" style="margin:0;color:var(--warn)">Last meal logged ${n} days ago (${esc(fmtD(last))}). Snap one photo per meal. The adaptive calorie target can't learn without it.</p>`:""})()}
     ${mealComposer(t)}
   </section>
   <section class="panel">
@@ -854,7 +871,7 @@ function strengthLab(){
 /* ================= CLAUDE ================= */
 function contextSummary(){
   const w=curWeek(),b=BLOCKS[blockOf(w)];const lines=[];
-  lines.push(`Athlete: male, ${S.settings.age}y, ${S.settings.heightCm} cm, current ${latestWeight()} lb, goal ${S.settings.goalLb} lb. Assistant equipment manager for a pro hockey team (long days, frequent road trips). Plays rec hockey and golf. Kinesiology-educated, so technical language is fine. ~30 min/session, 4 sessions/week. Work gym: full free weights and cables. Road: hotel gym, DBs to ${S.settings.hotelMax} lb.`);
+  lines.push(`Athlete: male, ${S.settings.age}y, ${S.settings.heightCm} cm, current ${latestWeight()} lb, goal ${S.settings.goalLb} lb. ${S.settings.bio||""} Plays rec hockey and golf. ~30 min/session, 4 sessions/week. Work gym: full free weights and cables. Road: hotel gym, DBs to ${S.settings.hotelMax} lb. No resistance bands. ${S.settings.coachNotes?"Coach notes: "+S.settings.coachNotes:""}`);
   lines.push(`Program: week ${w}/16, block "${b.n}" (${b.goal}). Deload weeks 4/8/12, test week 16. Location today: ${defLoc()}. Road trips: ${trips().filter(t=>t.end>=today()).map(t=>t.start+"→"+t.end+" "+(t.label||"")).join("; ")||"none saved"}.`);
   const done=[];for(let k=w-1;k<=w;k++)for(let d=1;d<=5;d++){if(k<1)continue;const p=sessionProgress(k,d);if(p.done)done.push(`W${k}D${d} ${p.done}/${p.total}`)}
   lines.push("Recent sessions: "+(done.join(", ")||"none"));
@@ -1010,6 +1027,9 @@ setInterval(()=>{if(clock.run&&clock.left>0)clock.left--;if(clock.rest>0){clock.
 document.addEventListener("click",async ev=>{
   const b=ev.target.closest("[data-act]");if(!b||b.tagName==="INPUT"&&b.type!=="checkbox"||b.tagName==="SELECT")return;const a=b.dataset.act;const ds=b.dataset;
   if(a==="loc"){const s2={...S.settings,loc:ds.v};if(ds.v==="gym"&&tripOn(today())&&S.settings.autoTravel!==false){s2.autoTravel=false;toast("Auto hotel mode is off until you turn it back on.")}save("settings/profile",s2);render()}
+  else if(a==="express"){const w=+ds.w,d=+ds.d,L=sessLog(w,d);L.express=b.checked;save("log/"+logKey(w,d),L);toast(b.checked?"Express session: about 15 minutes":"Full session");render()}
+  else if(a==="express-start"){const w=+ds.w,d=+ds.d,L=sessLog(w,d);L.express=true;save("log/"+logKey(w,d),L);S.view.week=w;S.view.day=d;location.hash="program";render()}
+  else if(a==="restart"){save("settings/profile",{...S.settings,start:ds.date});toast("Program restarts "+fmtD(ds.date)+" at Week 1");render()}
   else if(a==="autoreg"){save("settings/profile",{...S.settings,autoReg:b.checked});toast(b.checked?"Sessions adjust to your recovery":"Auto-adjust off · training as written");render()}
   else if(a==="retier"){const w=+ds.w,d=+ds.d,L=sessLog(w,d),T=currentTier();if(T){L.tier=T;save("log/"+logKey(w,d),L);toast("Session re-planned for today's recovery")}render()}
   else if(a==="deloadnow"){const w=+ds.w,b0=blockOf(w),m={...(S.settings.deloadMap||{})};m[b0]=w;save("settings/profile",{...S.settings,deloadMap:m});toast("Week "+w+" is now your deload. Week "+BLOCKS[b0].w[1]+" trains normally.");render()}
@@ -1058,7 +1078,10 @@ document.addEventListener("change",ev=>{
   if(a==="load"||a==="rpe"||a==="reps"){const w=+ds.w,d=+ds.d;const L=sessLog(w,d);const x=L.ex[ds.ex]=L.ex[ds.ex]||{};const v=parseFloat(el.value);if(a==="load")x.load=isNaN(v)?null:v;else if(a==="reps")x.reps=isNaN(v)?null:Math.round(v);else x.rpe=isNaN(v)?null:v;save("log/"+logKey(w,d),L);checkPR(w,d,ds.ex,L)}
   else if(a==="lift"){S.view.lift=el.value;render()}
   else if(a==="calib"){const c={...S.settings.calib};const v=parseFloat(el.value);if(isNaN(v))delete c[ds.k];else c[ds.k]=v;save("settings/profile",{...S.settings,calib:c});setTimeout(render,0)}
-  else if(a==="setting"){const v=ds.k==="start"?el.value:parseFloat(el.value);if(ds.k==="start"&&!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast("Use the format YYYY-MM-DD.");return}if(ds.k!=="start"&&isNaN(v))return;save("settings/profile",{...S.settings,[ds.k]:v});setTimeout(render,0)}
+  else if(a==="setting"){const v=ds.k==="start"?el.value:parseFloat(el.value);if(ds.k==="start"&&!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast("Use the format YYYY-MM-DD.");return}if(ds.k!=="start"&&isNaN(v))return;
+    const LIM={deficit:[0,1000,"Deficit is calories below maintenance: 0–1,000 (500 is about 1 lb a week). To eat a set number, lower or raise the deficit instead."],protein:[100,260],fat:[40,150],age:[16,90],goalLb:[120,260],startLb:[120,300],neat:[1.1,2.0],hotelMax:[10,150],heightCm:[140,210]};
+    if(LIM[ds.k]&&(v<LIM[ds.k][0]||v>LIM[ds.k][1])){toast(LIM[ds.k][2]||("Use a value from "+LIM[ds.k][0]+" to "+LIM[ds.k][1]+"."));el.value=S.settings[ds.k];return}
+    save("settings/profile",{...S.settings,[ds.k]:v});setTimeout(render,0)}
   else if(a==="recovery"||a==="dayfield"){const d=ds.date||today();const D={...dayDoc(d)};const f=a==="recovery"?"recovery":ds.f;const v=parseFloat(el.value);if(isNaN(v))delete D[f];else D[f]=f==="recovery"?clamp(Math.round(v),0,100):v;saveDay(d,D);setTimeout(render,0)}
 });
 $("#fileImport").addEventListener("change",e=>{const f=e.target.files[0];if(f)importFile(f);e.target.value=""});

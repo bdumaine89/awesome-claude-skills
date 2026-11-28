@@ -1,7 +1,7 @@
 # Nutrition Protocol
 
 ## Energy math
-- **BMR (Mifflin-St Jeor, male):** 10·kg + 6.25·cm − 5·age + 5. At 182 lb (82.6 kg), 172.7 cm and age 37 that’s ≈ **1,725 kcal**.
+- **BMR (Mifflin-St Jeor, male):** 10·kg + 6.25·cm − 5·age + 5. Example: 80 kg, 175 cm, age 35 → ≈ 1,820 kcal.
 - **Maintenance:** starts at BMR × 1.4 + ~250 ≈ **2,670 kcal** (uncertain; activity level is probably 1.5–1.7). With 5+ days of data, it uses the 14-day Apple Health average. From 14+ days with 10+ fully logged days and 8+ weigh-ins, it switches to an **adaptive TDEE**: mean logged intake − (median-based weight slope, lb/day × 3,500) over the last 21 days. It skips the first 10 days of the cut (water loss), and blends with the earlier estimate until 21 days are logged. This cancels out steady under-logging.
 - **Target:** maintenance − 500, plus ½ × (today's hockey/golf kcal − your average daily sport kcal). The baseline already includes your average sport, so this only shifts calories between days, with no double-counting. Floor of 1,800.
 - **Expected rate:** ~0.75–1.0 lb/week, so 182 → 170 takes ~12–16 weeks, matching the 16-week program. Water swings of ±2–3 lb from travel, sodium and games are normal, so judge the trend line.
